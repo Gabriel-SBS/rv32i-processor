@@ -18,9 +18,38 @@ Processador RISC-V de 32 bits e ciclo único, implementado em Verilog no **Progr
 
 ### `ALU` — Unidade Lógica e Aritmética
 
+```verilog
+module ALU (a, b, ALUControl, result);
+```
+
+Puramente combinacional. Os deslocamentos usam apenas `b[4:0]`. As comparações retornam `1` para verdadeiro e `0` para falso.
+
+| `ALUControl` | Operação | Resultado | Usada por |
+|---|---|---|---|
+| `0000` | ADD  | `a + b` | ADD, ADDI, LW, SW, AUIPC, JALR |
+| `0001` | SUB  | `a - b` | SUB |
+| `0010` | AND  | `a & b` | AND, ANDI |
+| `0011` | OR   | `a \| b` | OR, ORI |
+| `0100` | XOR  | `a ^ b` | XOR, XORI |
+| `0101` | SLL  | `a << b[4:0]` | SLL, SLLI |
+| `0110` | SRL  | `a >> b[4:0]` | SRL, SRLI |
+| `0111` | SRA  | `a >>> b[4:0]` (mantém o sinal) | SRA, SRAI |
+| `1000` | EQ   | `a == b` | BEQ |
+| `1001` | ULT  | `a < b` sem sinal | SLTU, SLTIU, BLTU |
+| `1010` | UGTE | `a >= b` sem sinal | BGEU |
+| `1011` | SLT  | `a < b` com sinal | SLT, SLTI, BLT |
+| `1100` | SGTE | `a >= b` com sinal | BGE |
+| `1101` | NE   | `a != b` | BNE |
+
 ### `regfile_alu` — Integração banco + ULA
 
 ## Testes
+
+Os testbenches comparam cada resultado com o valor esperado e terminam com `PASSOU` ou `FALHOU`.
+
+| Testbench | Verificações | O que é testado |
+|---|---|---|
+| `tb_alu` | 30 | as 14 operações, com casos de borda: estouro com e sem sinal, deslocamento por 31, `shamt` usando só `b[4:0]`, comparações com e sem sinal, código não usado |
 
 ## Próximas etapas
 
