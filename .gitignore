@@ -1,0 +1,28 @@
+# Documentos
+*.pdf
+
+# Simulação (Icarus Verilog / Verilator / GTKWave)
+*.vvp
+*.out
+*.vcd
+*.fst
+*.ghw
+obj_dir/
+
+# Síntese / ferramentas FPGA
+*.log
+*.jou
+*.bak
+db/
+incremental_db/
+output_files/
+.Xil/
+work/
+transcript
+
+# Editores e sistema
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
