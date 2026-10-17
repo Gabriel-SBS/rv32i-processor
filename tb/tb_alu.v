@@ -1,88 +1,90 @@
+`timescale 1ns/1ps
+// rtl: alu.v
 module tb_alu;
+reg  [31:0] a, b;
+reg  [3:0]  op;
+wire [31:0] result;
+wire        branch_taken;
 
-  reg  [31:0] a, b;
-  reg  [3:0]  opcode;
-  wire [31:0] result;
+integer i, errors;
 
-  reg  [31:0] expected;
-  integer errors = 0;
-  integer checks = 0;
+ALU dut (.a(a), .b(b), .ALUControl(op), .result(result), .branch_taken(branch_taken));
 
-  localparam ADD  = 4'b0000,
-             SUB = 4'b0001,
-             AND = 4'b0010,
-             OR  = 4'b0011,
-             XOR  = 4'b0100,
-             SLL = 4'b0101,
-             SRL = 4'b0110,
-             SRA = 4'b0111,
-             EQ   = 4'b1000, 
-             ULT = 4'b1001, 
-             UGTE = 4'b1010, 
-             SLT = 4'b1011,
-             SGTE = 4'b1100,
-             NE  = 4'b1101;
+task check(input [3:0] o, input [31:0] x, input [31:0] y, input [31:0] exp,
+           input exp_br, input [8*32-1:0] msg);
+	begin
+		op = o; a = x; b = y; #1;
+		if (result !== exp || branch_taken !== exp_br) begin
+			$display("FAIL: %0s a=%h b=%h got=%h/%b exp=%h/%b",
+			         msg, x, y, result, branch_taken, exp, exp_br);
+			errors = errors + 1;
+		end
+	end
+endtask
 
-  ALU dut (.a(a), .b(b), .ALUControl(opcode), .result(result));
+initial begin
+	$dumpfile("tb_alu.vcd");
+	$dumpvars(0, tb_alu);
+	errors = 0;
 
-  always @(a or b or opcode) begin
-    #5;
-    checks = checks + 1;
-    if (result !== expected) begin
-      errors = errors + 1;
-      $display("[ERRO] opcode=%b a=%h b=%h -> result=%h, esperado=%h",
-               opcode, a, b, result, expected);
-    end
-  end
+	// 1. aritmeticas
+	check(4'b0000, 32'd5, 32'd7, 32'd12, 0, "ADD");
+	check(4'b0000, 32'hFFFFFFFF, 32'd1, 32'd0, 0, "ADD overflow");
+	check(4'b1000, 32'd7, 32'd5, 32'd2, 0, "SUB");
+	check(4'b1000, 32'd0, 32'd1, 32'hFFFFFFFF, 0, "SUB underflow");
 
-  initial begin
-    $display("  opcode  a         b         result");
-    $monitor("  %b    %h  %h  %h", opcode, a, b, result);
-    // ADD e SUB
-    opcode = ADD;  a = 32'd5;          b = 32'd7;          expected = 32'd12;          #10;
-    opcode = ADD;  a = 32'hFFFF_FFFF;  b = 32'd1;          expected = 32'd0;           #10; // estouro sem sinal
-    opcode = ADD;  a = 32'h7FFF_FFFF;  b = 32'd1;          expected = 32'h8000_0000;   #10; // estouro com sinal
-    opcode = ADD;  a = 32'hFFFF_FFFB;  b = 32'd3;          expected = 32'hFFFF_FFFE;   #10; // -5 + 3 = -2
-    opcode = SUB;  a = 32'd12;         b = 32'd5;          expected = 32'd7;           #10;
-    opcode = SUB;  a = 32'd0;          b = 32'd1;          expected = 32'hFFFF_FFFF;   #10; // 0 - 1 = -1
+	// 2. logicas
+	check(4'b0111, 32'hF0F0F0F0, 32'hFF00FF00, 32'hF000F000, 0, "AND");
+	check(4'b0110, 32'hF0F0F0F0, 32'hFF00FF00, 32'hFFF0FFF0, 0, "OR");
+	check(4'b0100, 32'hF0F0F0F0, 32'hFF00FF00, 32'h0FF00FF0, 0, "XOR");
 
-    // Lógica
-    opcode = AND;  a = 32'hF0F0_F0F0;  b = 32'h0FF0_FF00;  expected = 32'h00F0_F000;   #10;
-    opcode = OR;   a = 32'hF0F0_0000;  b = 32'h000F_0F0F;  expected = 32'hF0FF_0F0F;   #10;
-    opcode = XOR;  a = 32'hFFFF_0000;  b = 32'hFF00_FF00;  expected = 32'h00FF_FF00;   #10;
-    opcode = XOR;  a = 32'h1234_5678;  b = 32'h1234_5678;  expected = 32'd0;           #10;
+	// 3. deslocamentos (so b[4:0] conta)
+	check(4'b0001, 32'h80000001, 32'd0,  32'h80000001, 0, "SLL 0");
+	check(4'b0001, 32'h80000001, 32'd1,  32'h00000002, 0, "SLL 1");
+	check(4'b0001, 32'h00000001, 32'd31, 32'h80000000, 0, "SLL 31");
+	check(4'b0001, 32'h00000001, 32'hFFFFFFE1, 32'h00000002, 0, "SLL b[31:5]");
+	check(4'b0101, 32'h80000000, 32'd1,  32'h40000000, 0, "SRL 1");
+	check(4'b0101, 32'h80000000, 32'd31, 32'h00000001, 0, "SRL 31");
+	check(4'b1101, 32'h80000000, 32'd1,  32'hC0000000, 0, "SRA 1");
+	check(4'b1101, 32'h80000000, 32'd31, 32'hFFFFFFFF, 0, "SRA 31");
+	check(4'b1101, 32'h40000000, 32'd1,  32'h20000000, 0, "SRA positivo");
+	check(4'b1101, 32'h80000000, 32'h00000020, 32'h80000000, 0, "SRA b[31:5]");
 
-    // Deslocamento
-    opcode = SLL;  a = 32'd1;          b = 32'd31;         expected = 32'h8000_0000;   #10;
-    opcode = SLL;  a = 32'h0000_00FF;  b = 32'd4;          expected = 32'h0000_0FF0;   #10;
-    opcode = SLL;  a = 32'd1;          b = 32'd33;         expected = 32'd2;           #10; // usa só b[4:0] = 1
-    opcode = SRL;  a = 32'h8000_0000;  b = 32'd31;         expected = 32'd1;           #10;
-    opcode = SRL;  a = 32'hF000_0000;  b = 32'd4;          expected = 32'h0F00_0000;   #10; // entra 0
-    opcode = SRA;  a = 32'hF000_0000;  b = 32'd4;          expected = 32'hFF00_0000;   #10; // entra o sinal
-    opcode = SRA;  a = 32'h7000_0000;  b = 32'd4;          expected = 32'h0700_0000;   #10; // positivo
+	// 4. comparacoes
+	check(4'b0010, 32'hFFFFFFFF, 32'd1, 32'd1, 0, "SLT -1<1");
+	check(4'b0011, 32'hFFFFFFFF, 32'd1, 32'd0, 0, "SLTU -1<1");
+	check(4'b0010, 32'd3, 32'd3, 32'd0, 0, "SLT igual");
+	check(4'b0011, 32'd2, 32'd3, 32'd1, 0, "SLTU 2<3");
 
-    // Comparações (resultado 1 = verdadeiro, 0 = falso)
-    opcode = EQ;   a = 32'hABCD_0001;  b = 32'hABCD_0001;  expected = 32'd1;           #10;
-    opcode = EQ;   a = 32'hABCD_0001;  b = 32'hABCD_0002;  expected = 32'd0;           #10;
-    opcode = NE;   a = 32'hABCD_0001;  b = 32'hABCD_0002;  expected = 32'd1;           #10;
-    opcode = NE;   a = 32'hABCD_0001;  b = 32'hABCD_0001;  expected = 32'd0;           #10;
-    opcode = ULT;  a = 32'd1;          b = 32'hFFFF_FFFF;  expected = 32'd1;           #10; // 1 < 4294967295
-    opcode = ULT;  a = 32'd7;          b = 32'd7;          expected = 32'd0;           #10;
-    opcode = UGTE; a = 32'd7;          b = 32'd7;          expected = 32'd1;           #10;
-    opcode = UGTE; a = 32'd0;          b = 32'd1;          expected = 32'd0;           #10;
-    opcode = SLT;  a = 32'hFFFF_FFFF;  b = 32'd1;          expected = 32'd1;           #10; // -1 < 1
-    opcode = SLT;  a = 32'd1;          b = 32'hFFFF_FFFF;  expected = 32'd0;           #10; // 1 < -1 ? não
-    opcode = SGTE; a = 32'd5;          b = 32'd5;          expected = 32'd1;           #10;
-    opcode = SGTE; a = 32'hFFFF_FFFE;  b = 32'hFFFF_FFFF;  expected = 32'd0;           #10; // -2 >= -1 ? não
+	// 5. branches (verdadeiro / falso)
+	check(4'b1001, 32'd9, 32'd9, 32'd1, 1, "BEQ T");
+	check(4'b1001, 32'd9, 32'd8, 32'd0, 0, "BEQ F");
+	check(4'b1010, 32'd9, 32'd8, 32'd1, 1, "BNE T");
+	check(4'b1010, 32'd9, 32'd9, 32'd0, 0, "BNE F");
+	check(4'b1100, 32'hFFFFFFFF, 32'd1, 32'd1, 1, "BLT T");
+	check(4'b1100, 32'd1, 32'hFFFFFFFF, 32'd0, 0, "BLT F");
+	check(4'b1011, 32'd1, 32'hFFFFFFFF, 32'd1, 1, "BGE T");
+	check(4'b1011, 32'd5, 32'd5, 32'd1, 1, "BGE igual");
+	check(4'b1011, 32'hFFFFFFFF, 32'd1, 32'd0, 0, "BGE F");
+	check(4'b1110, 32'd1, 32'hFFFFFFFF, 32'd1, 1, "BLTU T");
+	check(4'b1110, 32'hFFFFFFFF, 32'd1, 32'd0, 0, "BLTU F");
+	check(4'b1111, 32'hFFFFFFFF, 32'd1, 32'd1, 1, "BGEU T");
+	check(4'b1111, 32'd5, 32'd5, 32'd1, 1, "BGEU igual");
+	check(4'b1111, 32'd1, 32'hFFFFFFFF, 32'd0, 0, "BGEU F");
 
-    // verifica se for um código não usado vai ser 0
-    opcode = 4'b1111; a = 32'h1234_5678; b = 32'd1;       expected = 32'd0;           #10;
+	// 6. branch_taken = 0 em ops que nao sao branch, mesmo com result[0]=1
+	a = 32'hFFFFFFFF; b = 32'd1;
+	for (i = 0; i < 16; i = i + 1) begin
+		op = i; #1;
+		if (i != 4'b1001 && i != 4'b1010 && i != 4'b1011 && i != 4'b1100 &&
+		    i != 4'b1110 && i != 4'b1111 && branch_taken !== 1'b0) begin
+			$display("FAIL: branch_taken=1 em op=%b", op);
+			errors = errors + 1;
+		end
+	end
 
-    if (errors == 0)
-      $display("tb_alu: PASSOU (%0d verificacoes)", checks);
-    else
-      $display("tb_alu: FALHOU (%0d erros em %0d verificacoes)", errors, checks);
-    $finish;
-  end
-
+	if (errors == 0) $display("ALL TESTS PASSED");
+	else             $display("%0d erros", errors);
+	$finish;
+end
 endmodule
