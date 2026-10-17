@@ -1,9 +1,0 @@
-//
-// File created by:  xrun
-// Do not modify this file
-//
--access
-+rwc
--gui
-rtl/reg_bank.v
-tb/tb_register_file.v
