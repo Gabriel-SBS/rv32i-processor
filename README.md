@@ -43,6 +43,35 @@ Puramente combinacional. Os deslocamentos usam apenas `b[4:0]`. As comparações
 
 ### `regfile_alu` — Integração banco + ULA
 
+### `pc` — Contador de programa
+
+```verilog
+module pc (clk, rst, a, o);
+```
+
+Registrador de 32 bits. Na borda de subida de `clk`, carrega o próximo endereço (`a`). Com `rst = 0`, vai para `0` na hora, então o programa sempre começa no endereço 0.
+
+### `adder`, `mux2` e `mux4` — Blocos auxiliares
+
+```verilog
+module adder (a, b, o);                  // o = a + b
+module mux2  (s, a, b, o);               // s = 1 -> a;  s = 0 -> b
+module mux4  (s, a, b, c, d, o);         // s = 00 -> a, 01 -> b, 10 -> c, 11 -> d
+```
+
+## `pc_logic` — Cálculo do próximo PC
+
+Junta o `pc`, dois `adder` e um `mux4`. Um somador calcula `PC + 4`; o outro, `PC + imm`. O `mux4` escolhe o próximo endereço pelo sinal `PCSel`:
+
+| `PCSel` | Próximo PC | Usado em |
+|---|---|---|
+| `00` | `PC + 4` | execução sequencial e desvio não tomado |
+| `01` | `alu_result` com o bit 0 zerado | JALR: `(rs1 + imm) & ~1` |
+| `10` | `PC + imm` | desvio tomado (BEQ, BNE, ...) e JAL |
+| `11` | `PC + 4` | não usado |
+
+A saída `pc_plus4` também é o endereço de retorno que o JAL e o JALR gravam em `rd` (`RegSel = 3`).
+
 ## Testes
 
 Os testbenches comparam cada resultado com o valor esperado e terminam com `PASSOU` ou `FALHOU`.
@@ -56,7 +85,7 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 - [x] Banco de registradores
 - [x] ULA
 - [x] Integração banco de registradores + ULA
-- [ ] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
+- [x] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
 - [ ] Memória de instruções (`imem`) carregada de `imem.hex`
 - [ ] Memória de dados (`dmem`)
 - [ ] Gerador de imediatos (`extendImm`)
