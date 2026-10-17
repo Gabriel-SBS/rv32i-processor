@@ -1,0 +1,2 @@
+#e1(17Oct2026:10:33:27): source ./xcelium.d/env.d/env.history.17Oct2026_10_33_27
+s1(17Oct2026:10:33:27):  xrun -access +rwc -gui rtl/reg_bank.v tb/tb_register_file.v 

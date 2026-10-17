@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 // Banco de registradores RV32I: 32 x 32 bits, 2 leituras (rs1, rs2), 1 escrita (rd)
 // x0 e fixo em zero.
-module regfile (clk, rst_n, we, rs1, rs2, rd, wr_rd, rs1_o, rs2_o);
+module reg_bank (clk, rst_n, we, rs1, rs2, rd, wr_rd, rs1_o, rs2_o);
 input clk, rst_n, we;
 input [4:0] rs1, rs2, rd;
 input [31:0] wr_rd;
