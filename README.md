@@ -79,6 +79,11 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 | Testbench | Verificações | O que é testado |
 |---|---|---|
 | `tb_alu` | 30 | as 14 operações, com casos de borda: estouro com e sem sinal, deslocamento por 31, `shamt` usando só `b[4:0]`, comparações com e sem sinal, código não usado |
+| `tb_pc` | 11 | PC fica em 0 durante o reset; carrega o novo valor só na borda de subida; não muda entre bordas; reset assíncrono |
+| `tb_adder` | 8 | `PC + 4`, imediato positivo e negativo (desvio para frente e para trás), estouro de 32 bits |
+| `tb_mux4` | 7 | as 4 seleções; mudar uma entrada não selecionada não altera a saída |
+| `tb_pc_logic` | 18 | sequência de PCs com execução sequencial, desvio para frente e para trás, JAL, JALR (com bit 0 zerado), desvio não tomado e reset assíncrono |
+
 
 ## Próximas etapas
 
