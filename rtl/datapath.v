@@ -35,7 +35,7 @@ module datapath  #(
   
   instruction_memory instruction_memory(.addr(pc_next), .data(imm));
  
-  //instruction_ext instruction_ext(.imm(imm), .imm_ext(imm_ext));
+  instruction_ext instruction_ext(.imm(imm), .imm_ext(imm_ext));
 
   regfile rf (
     .clk(clk), .rst_n(rst_n), .we(we_reg),
