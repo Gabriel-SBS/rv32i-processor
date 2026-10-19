@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module controller #(
     /** Macros for signal bit counts **/
     parameter PC_W      = 32,   // PC width

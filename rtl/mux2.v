@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module mux2 (
     input         s,
     input  [31:0] a,

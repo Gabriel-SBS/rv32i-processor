@@ -1,6 +1,7 @@
+`timescale 1ns/1ps
 module pc_logic (
     input         clk,
-    input         rst,         // ativo em nível baixo
+    input         rst_n,         // ativo em nível baixo
     input  [1:0]  PC_sel,
     input  [31:0] imm,         // imediato estendido (Extnd)
     input  [31:0] alu_result,  // destino do JALR
@@ -11,7 +12,7 @@ module pc_logic (
 );
     pc u_pc (
         .clk (clk),
-        .rst (rst),
+        .rst_n (rst_n),
         .a   (pc_next),
         .o   (pc_o)
     );

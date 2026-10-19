@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // Sequência de PCs testada (o PC começa em 0 depois do reset):
 //   0x000 -> 0x004 -> 0x008 -> 0x00C   execução sequencial   (PC_sel = 0)
 //   0x00C -> 0x01C                     desvio tomado, +16    (PC_sel = 2)

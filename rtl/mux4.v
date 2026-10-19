@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module mux4 (
     input      [1:0]  s,
     input      [31:0] a,  // s = 00

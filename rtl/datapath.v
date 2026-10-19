@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 // Banco de registradores + ULA: rd <= rs1 op (ALUSrc ? imm : rs2)
 module datapath #(
     /** Macros for signal bit counts **/
@@ -15,8 +16,8 @@ module datapath #(
     input  [PC_SEL_W-1:0]  PC_sel,
     input  [REG_SEL_W-1:0] REG_sel,
     output [DATA_W-1:0]    result,
-    output [7:0]           opcode,
-    output [7:0]           funct7,
+    output [6:0]           opcode,
+    output [6:0]           funct7,
     output [2:0]           funct3
 );
     wire [DATA_W-1:0]  src_a, src_b, write_back_result, mem_o, rs1_o, rs2_o;
@@ -37,7 +38,7 @@ module datapath #(
     mux4 u_mux_write_back (.s(REG_sel), .a(mem_o), .b(result), .c(imm_ext), .d(pc_plus4), .o(write_back_result));  // write_back
 
     pc_logic u_pc_logic (
-        .clk(clk), .rst(rst_n), .PC_sel(PC_sel), .imm(instr), .alu_result(result),
+        .clk(clk), .rst_n(rst_n), .PC_sel(PC_sel), .imm(instr), .alu_result(result),
         .pc_o(pc), .pc_plus4(pc_plus4), .pc_next(pc_next), .pc_target()
     );
 
@@ -55,7 +56,7 @@ module datapath #(
     alu u_alu (.a(src_a), .b(src_b), .ALU_Control(ALU_Control), .result(result));
 
     data_memory u_data_memory (
-        .clk(clk), .rst(rst_n), .we(we_mem), .wdata(rs2_o),
+        .clk(clk), .rst_n(rst_n), .we(we_mem), .wdata(rs2_o),
         .addr(result[DM_ADDR_W-1:0]), .rdata(mem_o)
     );
 endmodule

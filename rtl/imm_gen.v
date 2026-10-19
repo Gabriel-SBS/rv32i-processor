@@ -1,6 +1,7 @@
+`timescale 1ns/1ps
 module imm_gen (
     input  [31:0] instr,
-    output [31:0] imm_ext
+    output reg [31:0] imm_ext
 );
     /** Module Behavior **/
     always @(instr) begin
