@@ -14,7 +14,10 @@ module datapath  #(
   input   [ALU_CC_W-1:0]  ALU_Control,
   input   [PC_SEL_W-1:0] PC_sel,
   input   [REG_SEL_W-1:0] REG_sel,
-  output  [DATA_W-1:0] result
+  output  [DATA_W-1:0] result,
+  output  [7:0] opcode,
+  output  [7:0] funct7,
+  output  [2:0] funct3
   );
 
   wire [DATA_W-1:0] src_a, src_b, write_back_result, mem_o, rs1_o, rs2_o;
@@ -26,6 +29,10 @@ module datapath  #(
   assign rd = imm[11:7];
   assign rs1 = imm[19:15];
   assign rs2 = imm[24:20];
+
+  assign opcode = imm[6:0];
+  assign funct3 = imm[14:12];
+  assign funct7 = imm[31:25];
 
   mux2 mux_src_a (.s(rs1_sel), .a(rs1_o), .b(imm_ext), .o(src_a)); // execução
   mux2 mux_src_b (.s(rs2_sel), .a(rs2_o), .b(imm_ext), .o(src_b));
