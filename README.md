@@ -14,17 +14,17 @@ Processador RISC-V de 32 bits e ciclo único, implementado em Verilog no **Progr
 
 ## Módulos
 
-### `regfile` — Banco de registradores
+### `reg_bank` — Banco de registradores
 
-### `ALU` — Unidade Lógica e Aritmética
+### `alu` — Unidade Lógica e Aritmética
 
 ```verilog
-module ALU (a, b, ALUControl, result);
+module alu (a, b, ALU_Control, result);
 ```
 
 Puramente combinacional. Os deslocamentos usam apenas `b[4:0]`. As comparações retornam `1` para verdadeiro e `0` para falso.
 
-| `ALUControl` | Operação | Resultado | Usada por |
+| `ALU_Control` | Operação | Resultado | Usada por |
 |---|---|---|---|
 | `0000` | ADD  | `a + b` | ADD, ADDI, LW, SW, AUIPC, JALR |
 | `0001` | SUB  | `a - b` | SUB |

@@ -23,7 +23,7 @@ module tb_alu;
              SGTE = 4'b1100,
              NE  = 4'b1101;
 
-  ALU dut (.a(a), .b(b), .ALUControl(opcode), .result(result));
+  alu dut (.a(a), .b(b), .ALU_Control(opcode), .result(result));
 
   always @(a or b or opcode) begin
     #5;
