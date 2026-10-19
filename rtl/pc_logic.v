@@ -1,7 +1,7 @@
 module pc_logic (
   input         clk,
   input         rst,          // ativo em nível baixo
-  input  [1:0]  PCSel,
+  input  [1:0]  PC_sel,
   input  [31:0] imm,          // imediato estendido (Extnd)
   input  [31:0] alu_result,   // destino do JALR
   output [31:0] pc_o,         // PC atual (endereço da memória de instruções)
@@ -30,7 +30,7 @@ module pc_logic (
   );
 
   mux4 u_mux_pc (
-    .s (PCSel),
+    .s (PC_sel),
     .a (pc_plus4),
     .b ({alu_result[31:1], 1'b0}),
     .c (pc_target),

@@ -5,12 +5,12 @@ module data_memory(
     output reg [31:0] rdata
 );
 
+    integer i;
     reg [31:0] mem [0:63]; // 64 words of 32 bits
     always @(posedge clk) begin
         if (rst) begin
 
             //reset memory to zero
-            integer i;
             for (i = 0; i < 64; i = i + 1) begin
                 mem[i] <= 32'b0;    
             end
