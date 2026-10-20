@@ -22,7 +22,7 @@ module datapath #(
 );
     wire [DATA_W-1:0]  src_a, src_b, write_back_result, mem_o, rs1_o, rs2_o;
     wire [ADDR_W-1:0]  rd, rs1, rs2;
-    wire [PC_W-1:0]    pc, pc_next, pc_plus4;
+    wire [PC_W-1:0]    pc, pc_next, pc_plus4, pc_target;
     wire [INSTR_W-1:0] instr, imm_ext;
 
     assign rd  = instr[11:7];
@@ -33,16 +33,16 @@ module datapath #(
     assign funct3 = instr[14:12];
     assign funct7 = instr[31:25];
 
-    mux2 u_mux_src_a (.s(rs1_sel), .a(rs1_o), .b(imm_ext), .o(src_a));  // execução
-    mux2 u_mux_src_b (.s(rs2_sel), .a(rs2_o), .b(imm_ext), .o(src_b));
+    mux2 u_mux_src_a (.s(rs1_sel), .b(rs1_o), .a(pc_target), .o(src_a));  // execução
+    mux2 u_mux_src_b (.s(rs2_sel), .b(rs2_o), .a(imm_ext), .o(src_b));
     mux4 u_mux_write_back (.s(REG_sel), .a(mem_o), .b(result), .c(imm_ext), .d(pc_plus4), .o(write_back_result));  // write_back
 
     pc_logic u_pc_logic (
-        .clk(clk), .rst_n(rst_n), .PC_sel(PC_sel), .imm(instr), .alu_result(result),
-        .pc_o(pc), .pc_plus4(pc_plus4), .pc_next(pc_next), .pc_target()
+        .clk(clk), .rst_n(rst_n), .PC_sel(PC_sel), .imm_ext(imm_ext), .alu_result(result),
+        .pc_o(pc), .pc_plus4(pc_plus4), .pc_next(pc_next), .pc_target(pc_target)
     );
 
-    instruction_memory u_instruction_memory (.addr(pc_next), .data(instr));
+    instruction_memory u_instruction_memory (.addr(pc), .data(instr));
 
     imm_gen u_imm_gen (.instr(instr), .imm_ext(imm_ext));
 
@@ -57,6 +57,6 @@ module datapath #(
 
     data_memory u_data_memory (
         .clk(clk), .rst_n(rst_n), .we(we_mem), .wdata(rs2_o),
-        .addr(result[DM_ADDR_W-1:0]), .rdata(mem_o)
+        .addr(result[DM_ADDR_W+1:2]), .rdata(mem_o)
     );
 endmodule

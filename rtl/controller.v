@@ -4,9 +4,11 @@ module controller #(
     parameter PC_W      = 32,   // PC width
     parameter ALU_CC_W  = 4,    // ALU_Control width
     parameter PC_SEL_W  = 2,    // PC_sel width
-    parameter REG_SEL_W = 2     // REG_sel width
+    parameter REG_SEL_W = 2,     // REG_sel width
+    parameter DATA_W = 32
 )(
     input      [6:0]           opcode,
+    input  result_lsb,
     output reg [PC_SEL_W-1:0]  PC_sel,
     output reg [REG_SEL_W-1:0] REG_sel,
     output reg [1:0]           ALU_Op,
@@ -23,6 +25,14 @@ module controller #(
     localparam JALR  = 7'b1100111;
 
     always @(*) begin
+        we_reg = 0;
+        rs1_sel = 0;
+        rs2_sel = 0;
+        we_mem = 0;
+        REG_sel = 0;
+        PC_sel = 0;
+        ALU_Op = 2'b00;
+
         case (opcode)
             R : begin
                 we_reg = 1;
@@ -59,7 +69,11 @@ module controller #(
                 rs1_sel = 0;
                 rs2_sel = 0;
                 we_mem = 0;
-                PC_sel = 2;
+                if (result_lsb) begin
+                    PC_sel = 2;
+                end else begin
+                    PC_sel = 0;
+                end
                 ALU_Op = 2'b01;
             end
 
@@ -118,6 +132,7 @@ module controller #(
                 we_mem = 0;
                 REG_sel = 0;
                 PC_sel = 0;
+                ALU_Op = 2'b00;
             end
         endcase
     end

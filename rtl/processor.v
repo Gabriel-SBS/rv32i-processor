@@ -24,6 +24,6 @@ module processor #(
 
     alu_controller u_alu_controller(.ALU_Op(ALU_Op), .funct3(funct3), .funct7(funct7), .ALU_Control(ALU_Control));
 
-    controller u_controller(.opcode(opcode), .PC_sel(PC_sel), .REG_sel(REG_sel), .ALU_Op(ALU_Op), 
+    controller u_controller(.opcode(opcode), .result_lsb(result[0]), .PC_sel(PC_sel), .REG_sel(REG_sel), .ALU_Op(ALU_Op), 
     .we_mem(we_mem), .we_reg(we_reg), .rs1_sel(rs1_sel), .rs2_sel(rs2_sel));
 endmodule

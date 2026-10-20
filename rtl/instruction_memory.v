@@ -12,6 +12,6 @@ module instruction_memory #(
     end
 
     always @(*) begin
-        data = mem[addr[31:2]];  // Assuming word-aligned addresses
+        data = mem[addr[9:2]];  // Assuming word-aligned addresses
     end
 endmodule

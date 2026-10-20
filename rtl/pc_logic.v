@@ -3,7 +3,7 @@ module pc_logic (
     input         clk,
     input         rst_n,         // ativo em nível baixo
     input  [1:0]  PC_sel,
-    input  [31:0] imm,         // imediato estendido (Extnd)
+    input  [31:0] imm_ext,         // imediato estendido (Extnd)
     input  [31:0] alu_result,  // destino do JALR
     output [31:0] pc_o,        // PC atual (endereço da memória de instruções)
     output [31:0] pc_plus4,    // PC + 4 (também vai para REG_sel = 3: retorno de JAL/JALR)
@@ -25,7 +25,7 @@ module pc_logic (
 
     adder u_add_imm (
         .a (pc_o),
-        .b (imm),
+        .b (imm_ext),
         .o (pc_target)
     );
 
