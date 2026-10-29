@@ -9,7 +9,7 @@ module tb_pc;
   integer errors = 0;
   integer checks = 0;
 
-  pc dut (.clk(clk), .rst(rst), .a(a), .o(o));
+  pc dut (.clk(clk), .rst_n(rst), .a(a), .o(o));
 
   initial clk = 1'b0;
   always #5 clk = ~clk;

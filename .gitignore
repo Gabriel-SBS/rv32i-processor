@@ -26,3 +26,12 @@ transcript
 *.swp
 *~
 .DS_Store
+
+# Cadence Xcelium / SimVision
+sim/build/
+xcelium.d/
+*.shm/
+*.history
+*.diag
+xrun.key
+.simvision/

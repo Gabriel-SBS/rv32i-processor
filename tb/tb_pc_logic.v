@@ -22,7 +22,7 @@ module tb_pc_logic;
   integer checks = 0;
 
   pc_logic dut (
-    .clk(clk), .rst(rst), .PC_sel(PC_sel), .imm(imm), .alu_result(alu_result),
+    .clk(clk), .rst_n(rst), .PC_sel(PC_sel), .imm_ext(imm), .alu_result(alu_result),
     .pc_o(pc_o), .pc_plus4(pc_plus4), .pc_target(pc_target), .pc_next(pc_next)
   );
 

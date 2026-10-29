@@ -66,12 +66,13 @@ module tb_instruction_memory;
     check_read(2, expected[0]);
     check_read(3, expected[0]);
 
-    // Comportamento atual em simulacao: posicoes nao carregadas e
-    // acessos fora do array retornam X, sem sinalizar uma excecao.
+    // Comportamento atual em simulacao: posicoes nao carregadas retornam X,
+    // sem sinalizar uma excecao.
     check_read(PROGRAM_WORDS * 4, 32'hxxxx_xxxx);
     check_read((MEM_SIZE - 1) * 4, 32'hxxxx_xxxx);
-    check_read(MEM_SIZE * 4, 32'hxxxx_xxxx);
-    check_read(32'hffff_fffc, 32'hxxxx_xxxx);
+    // O indice usa so addr[9:2]: enderecos acima da memoria dao a volta.
+    check_read(MEM_SIZE * 4, expected[0]);
+    check_read(32'hffff_fffc, 32'hxxxx_xxxx);   // = palavra MEM_SIZE - 1
 
     if (errors != 0) begin
       $display("tb_instruction_memory: FALHOU (%0d erros em %0d verificacoes)",
