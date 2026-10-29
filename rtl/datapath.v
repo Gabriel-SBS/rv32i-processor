@@ -5,7 +5,7 @@ module datapath #(
     parameter PC_W      = 32,  // PC width
     parameter INSTR_W   = 32,  // Instruction width
     parameter DATA_W    = 32,  // Data width
-    parameter DM_ADDR_W = 6,   // DataMem width
+    parameter DM_ADDR_W = 9,   // DataMem width (2^9 palavras = 2 KiB)
     parameter ALU_CC_W  = 4,   // ALU_Control width
     parameter PC_SEL_W  = 2,   // PC_sel width
     parameter REG_SEL_W = 2,   // REG_sel width
@@ -33,7 +33,7 @@ module datapath #(
     assign funct3 = instr[14:12];
     assign funct7 = instr[31:25];
 
-    mux2 u_mux_src_a (.s(rs1_sel), .b(rs1_o), .a(pc_target), .o(src_a));  // execução
+    mux2 u_mux_src_a (.s(rs1_sel), .b(rs1_o), .a(pc), .o(src_a));  // execução (rs1_sel = 1: auipc usa o PC)
     mux2 u_mux_src_b (.s(rs2_sel), .b(rs2_o), .a(imm_ext), .o(src_b));
     mux4 u_mux_write_back (.s(REG_sel), .a(mem_o), .b(result), .c(imm_ext), .d(pc_plus4), .o(write_back_result));  // write_back
 
@@ -55,8 +55,8 @@ module datapath #(
 
     alu u_alu (.a(src_a), .b(src_b), .ALU_Control(ALU_Control), .result(result));
 
-    data_memory u_data_memory (
-        .clk(clk), .rst_n(rst_n), .we(we_mem), .wdata(rs2_o),
-        .addr(result[DM_ADDR_W+1:2]), .rdata(mem_o)
+    data_memory #(.ADDR_W(DM_ADDR_W)) u_data_memory (
+        .clk(clk), .rst_n(rst_n), .we(we_mem), .funct3(funct3), .wdata(rs2_o),
+        .addr(result[DM_ADDR_W+1:0]), .rdata(mem_o)
     );
 endmodule

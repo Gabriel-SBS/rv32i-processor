@@ -87,7 +87,7 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 | `tb_alu_ref` | 23400 | todos os códigos × pares de valores-limite, deslocamentos de 0 a 31 e 20 mil casos aleatórios contra um modelo de referência |
 | `tb_register_file` | 1214 | reset, escrita e leitura nas duas portas, `x0` fixo em zero, `we = 0`, escrita só na borda, valores-limite e 500 casos aleatórios contra um modelo |
 | `tb_regfile_alu` | 5168 | banco + ULA executando instruções em sequência, com dependências, `x0`, `we = 0`, reset no meio e 5000 instruções aleatórias |
-| `tb_data_memory` | 1204 | reset síncrono zera as 64 palavras; escrita só na borda de subida; leitura combinacional; `we = 0`; reset tem prioridade; 1000 casos aleatórios |
+| `tb_data_memory` | 3559 | reset síncrono zera as 512 palavras; `sw`/`lw` em todas; `sb`/`sh` só mudam os bytes do acesso; `lb`/`lh` com sinal e `lbu`/`lhu` com zeros; `0x400` e `0x500` sem aliasing; escrita só na borda; `we = 0`; reset tem prioridade; 2000 acessos aleatórios contra um modelo byte a byte |
 | `tb_instruction_memory` | 46 | leitura de todas as palavras do HEX, bits 1:0 ignorados, posições não carregadas e endereço acima da memória |
 | `tb_imm_gen` | 4526 | formatos I, S, B, U e J com instruções reais (imediatos positivos, negativos e bits 11/12 de B e J) e 500 instruções aleatórias por opcode |
 | `tb_alu_controller` | 329 | todas as combinações de `ALU_Op` × `funct3`; `funct7[5]` escolhe SUB/SRA só onde deve (ADDI negativo não vira SUB) |
@@ -112,12 +112,13 @@ SHM=sim/build/tb_processor_05_lui_auipc.shm CURSOR=364 simvision -input sim/simv
 
 ### Situação atual do processador
 
-| Programa | Resultado | Causa |
+Os 10 programas passam, com o mesmo número de ciclos que o simulador de referência (de 51 ciclos no 04 a 723 no 10). Três bugs foram encontrados por eles e corrigidos:
+
+| Programa | Bug | Correção |
 |---|---|---|
-| 01, 02, 03, 04, 06, 08, 09 | PASSOU | número de ciclos igual ao da referência |
-| 05 `lui_auipc` | FALHOU no subteste 7 | AUIPC: o `mux` de `src_a` no `datapath` usa `pc_target` (PC + imm) em vez de `pc`, então o resultado é PC + 2·imm |
-| 07 `load_store_byte_half` | FALHOU no subteste 1 | LB, LH, LBU, LHU, SB e SH não estão implementados: a memória só lê e escreve palavras inteiras |
-| 10 `algoritmo_final` | FALHOU no subteste 3 | a `data_memory` tem 64 palavras endereçadas por `result[7:2]`: `0x400` e `0x500` caem na mesma posição e o Fibonacci sobrescreve o vetor. Os programas precisam de pelo menos 2 KiB |
+| 05 `lui_auipc` | AUIPC dava PC + 2·imm: o `mux` de `src_a` usava `pc_target` (PC + imm) em vez de `pc` | `src_a` recebe `pc` quando `rs1_sel = 1` |
+| 07 `load_store_byte_half` | LB, LH, LBU, LHU, SB e SH não existiam: a memória só lia e escrevia palavras inteiras | a `data_memory` recebe `funct3` e o endereço em bytes; escreve só os bytes do acesso e estende o sinal na leitura |
+| 10 `algoritmo_final` | a `data_memory` tinha 64 palavras (`result[7:2]`): `0x400` e `0x500` caíam na mesma posição | memória de 512 palavras (2 KiB), parâmetro `DM_ADDR_W = 9` |
 
 
 ## Próximas etapas
@@ -128,8 +129,9 @@ SHM=sim/build/tb_processor_05_lui_auipc.shm CURSOR=364 simvision -input sim/simv
 - [x] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
 - [x] Memória de instruções (`imem`) carregada de `imem.hex`
 - [x] Memória de dados (`dmem`)
-- [ ] Gerador de imediatos (`extendImm`)
-- [ ] Unidade de controle (`control`) e `mux4`
-- [ ] Integração do processador completo
-- [ ] Programas de teste em assembly e em hexadecimal
-- [ ] Testbench do processador e relatório com formas de onda comentadas
+- [x] Gerador de imediatos (`imm_gen`)
+- [x] Unidade de controle (`controller`, `alu_controller`) e `mux4`
+- [x] Integração do processador completo
+- [x] Programas de teste em assembly e em hexadecimal
+- [x] Testbench do processador
+- [ ] Relatório com formas de onda comentadas
