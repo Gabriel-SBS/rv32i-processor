@@ -92,7 +92,7 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 - [x] Integração banco de registradores + ULA
 - [x] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
 - [x] Memória de instruções (`imem`) carregada de `imem.hex`
-- [ ] Memória de dados (`dmem`)
+- [x] Memória de dados (`dmem`)
 - [ ] Gerador de imediatos (`extendImm`)
 - [ ] Unidade de controle (`control`) e `mux4`
 - [ ] Integração do processador completo
