@@ -14,17 +14,17 @@ Processador RISC-V de 32 bits e ciclo único, implementado em Verilog no **Progr
 
 ## Módulos
 
-### `regfile` — Banco de registradores
+### `reg_bank` — Banco de registradores
 
-### `ALU` — Unidade Lógica e Aritmética
+### `alu` — Unidade Lógica e Aritmética
 
 ```verilog
-module ALU (a, b, ALUControl, result);
+module alu (a, b, ALU_Control, result);
 ```
 
 Puramente combinacional. Os deslocamentos usam apenas `b[4:0]`. As comparações retornam `1` para verdadeiro e `0` para falso.
 
-| `ALUControl` | Operação | Resultado | Usada por |
+| `ALU_Control` | Operação | Resultado | Usada por |
 |---|---|---|---|
 | `0000` | ADD  | `a + b` | ADD, ADDI, LW, SW, AUIPC, JALR |
 | `0001` | SUB  | `a - b` | SUB |
@@ -83,6 +83,42 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 | `tb_adder` | 8 | `PC + 4`, imediato positivo e negativo (desvio para frente e para trás), estouro de 32 bits |
 | `tb_mux4` | 7 | as 4 seleções; mudar uma entrada não selecionada não altera a saída |
 | `tb_pc_logic` | 18 | sequência de PCs com execução sequencial, desvio para frente e para trás, JAL, JALR (com bit 0 zerado), desvio não tomado e reset assíncrono |
+| `tb_mux2` | 207 | as 2 seleções; mudar a entrada não selecionada não altera a saída; 200 casos aleatórios |
+| `tb_alu_ref` | 23400 | todos os códigos × pares de valores-limite, deslocamentos de 0 a 31 e 20 mil casos aleatórios contra um modelo de referência |
+| `tb_register_file` | 1214 | reset, escrita e leitura nas duas portas, `x0` fixo em zero, `we = 0`, escrita só na borda, valores-limite e 500 casos aleatórios contra um modelo |
+| `tb_regfile_alu` | 5168 | banco + ULA executando instruções em sequência, com dependências, `x0`, `we = 0`, reset no meio e 5000 instruções aleatórias |
+| `tb_data_memory` | 3559 | reset síncrono zera as 512 palavras; `sw`/`lw` em todas; `sb`/`sh` só mudam os bytes do acesso; `lb`/`lh` com sinal e `lbu`/`lhu` com zeros; `0x400` e `0x500` sem aliasing; escrita só na borda; `we = 0`; reset tem prioridade; 2000 acessos aleatórios contra um modelo byte a byte |
+| `tb_instruction_memory` | 46 | leitura de todas as palavras do HEX, bits 1:0 ignorados, posições não carregadas e endereço acima da memória |
+| `tb_imm_gen` | 4526 | formatos I, S, B, U e J com instruções reais (imediatos positivos, negativos e bits 11/12 de B e J) e 500 instruções aleatórias por opcode |
+| `tb_alu_controller` | 329 | todas as combinações de `ALU_Op` × `funct3`; `funct7[5]` escolhe SUB/SRA só onde deve (ADDI negativo não vira SUB) |
+| `tb_controller` | 274 | sinais de controle das 9 classes de instrução com desvio tomado e não tomado; os 128 opcodes (inválidos não escrevem nem desviam) |
+| `tb_processor` | 34 por programa | roda os 10 programas de `instructions/programs/` até o laço final e confere `x31 = 1`, o PC final e os 32 registradores contra o simulador de referência |
+
+O `tb_processor` escolhe o programa com `+TEST=<nome>`. Os arquivos `.regs` têm os 32 registradores e o PC finais calculados pelo `rv32i_sim.py` (do `arquivos_assembly.zip`).
+
+### Como rodar (Cadence Xcelium)
+
+```bash
+sim/run_xrun.sh                         # todos os testbenches e os 10 programas
+sim/run_xrun.sh tb_alu tb_processor     # só os indicados
+WAVES=1 sim/run_xrun.sh tb_processor    # grava as formas de onda em sim/build/*.shm
+```
+
+Para ver as formas de onda do processador no SimVision, já com os sinais agrupados (busca, decodificação, controle, ULA, memória e status do teste):
+
+```bash
+SHM=sim/build/tb_processor_05_lui_auipc.shm CURSOR=364 simvision -input sim/simvision_processor.tcl
+```
+
+### Situação atual do processador
+
+Os 10 programas passam, com o mesmo número de ciclos que o simulador de referência (de 51 ciclos no 04 a 723 no 10). Três bugs foram encontrados por eles e corrigidos:
+
+| Programa | Bug | Correção |
+|---|---|---|
+| 05 `lui_auipc` | AUIPC dava PC + 2·imm: o `mux` de `src_a` usava `pc_target` (PC + imm) em vez de `pc` | `src_a` recebe `pc` quando `rs1_sel = 1` |
+| 07 `load_store_byte_half` | LB, LH, LBU, LHU, SB e SH não existiam: a memória só lia e escrevia palavras inteiras | a `data_memory` recebe `funct3` e o endereço em bytes; escreve só os bytes do acesso e estende o sinal na leitura |
+| 10 `algoritmo_final` | a `data_memory` tinha 64 palavras (`result[7:2]`): `0x400` e `0x500` caíam na mesma posição | memória de 512 palavras (2 KiB), parâmetro `DM_ADDR_W = 9` |
 
 
 ## Próximas etapas
@@ -93,8 +129,9 @@ Os testbenches comparam cada resultado com o valor esperado e terminam com `PASS
 - [x] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
 - [x] Memória de instruções (`imem`) carregada de `imem.hex`
 - [x] Memória de dados (`dmem`)
-- [ ] Gerador de imediatos (`extendImm`)
-- [ ] Unidade de controle (`control`) e `mux4`
-- [ ] Integração do processador completo
-- [ ] Programas de teste em assembly e em hexadecimal
-- [ ] Testbench do processador e relatório com formas de onda comentadas
+- [x] Gerador de imediatos (`imm_gen`)
+- [x] Unidade de controle (`controller`, `alu_controller`) e `mux4`
+- [x] Integração do processador completo
+- [x] Programas de teste em assembly e em hexadecimal
+- [x] Testbench do processador
+- [ ] Relatório com formas de onda comentadas

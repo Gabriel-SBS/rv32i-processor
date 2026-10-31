@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module tb_pc;
 
   reg         clk, rst;
@@ -8,7 +9,7 @@ module tb_pc;
   integer errors = 0;
   integer checks = 0;
 
-  pc dut (.clk(clk), .rst(rst), .a(a), .o(o));
+  pc dut (.clk(clk), .rst_n(rst), .a(a), .o(o));
 
   initial clk = 1'b0;
   always #5 clk = ~clk;

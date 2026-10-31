@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module tb_adder;
 
   reg  [31:0] a, b;
