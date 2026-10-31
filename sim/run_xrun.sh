@@ -34,8 +34,9 @@ roda() {
        -top "$tb" rtl/*.v "tb/$tb.v" "${extra[@]}" "$@" > /dev/null 2>&1
 
   local linha
-  linha=$(grep -E "PASSOU|FALHOU" "$BUILD/$nome.log" | grep -v '\$display' | tail -1)
-  if echo "$linha" | grep -q PASSOU && ! grep -qE '^xrun: \*[EF],|^xmvlog: \*[EF],|^xmelab: \*[EF],|^xmsim: \*[EF],' "$BUILD/$nome.log"; then
+  # tb_alu (vindo da main) imprime "ALL TESTS PASSED" / "<n> erros"; os demais, PASSOU / FALHOU
+  linha=$(grep -E "PASSOU|FALHOU|ALL TESTS PASSED|^[0-9]+ erros" "$BUILD/$nome.log" | grep -v '\$display' | tail -1)
+  if echo "$linha" | grep -qE "PASSOU|ALL TESTS PASSED" && ! grep -qE '^xrun: \*[EF],|^xmvlog: \*[EF],|^xmelab: \*[EF],|^xmsim: \*[EF],' "$BUILD/$nome.log"; then
     echo "  ok     $linha"
   else
     echo "  FALHA  ${linha:-$nome: sem resultado (veja sim/build/$nome.log)}"

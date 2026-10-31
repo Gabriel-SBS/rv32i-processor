@@ -16,6 +16,7 @@ module datapath #(
     input  [PC_SEL_W-1:0]  PC_sel,
     input  [REG_SEL_W-1:0] REG_sel,
     output [DATA_W-1:0]    result,
+    output                 branch_taken,
     output [6:0]           opcode,
     output [6:0]           funct7,
     output [2:0]           funct3
@@ -53,7 +54,7 @@ module datapath #(
         .rs1_o(rs1_o), .rs2_o(rs2_o)
     );
 
-    alu u_alu (.a(src_a), .b(src_b), .ALU_Control(ALU_Control), .result(result));
+    ALU u_alu (.a(src_a), .b(src_b), .ALUControl(ALU_Control), .result(result), .branch_taken(branch_taken));
 
     data_memory #(.ADDR_W(DM_ADDR_W)) u_data_memory (
         .clk(clk), .rst_n(rst_n), .we(we_mem), .funct3(funct3), .wdata(rs2_o),

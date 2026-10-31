@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// Unidade de controle: confere os sinais de cada opcode do RV32I, com result_lsb = 0 e 1.
+// Unidade de controle: confere os sinais de cada opcode do RV32I, com branch_taken = 0 e 1.
 // A tabela esperada vem do significado de cada sinal no datapath:
 //   rs1_sel: 0 = rs1, 1 = PC          rs2_sel: 0 = rs2, 1 = imediato
 //   REG_sel: 0 = memória, 1 = ULA, 2 = imediato, 3 = PC + 4
@@ -13,7 +13,7 @@ module tb_controller;
              AUIPC = 7'b0010111, JAL   = 7'b1101111, JALR = 7'b1100111;
 
   reg  [6:0] opcode;
-  reg        result_lsb;
+  reg        branch_taken;
   wire [1:0] PC_sel, REG_sel, ALU_Op;
   wire       we_mem, we_reg, rs1_sel, rs2_sel;
 
@@ -26,12 +26,12 @@ module tb_controller;
   integer op, lsb;
 
   controller dut (
-    .opcode(opcode), .result_lsb(result_lsb),
+    .opcode(opcode), .branch_taken(branch_taken),
     .PC_sel(PC_sel), .REG_sel(REG_sel), .ALU_Op(ALU_Op),
     .we_mem(we_mem), .we_reg(we_reg), .rs1_sel(rs1_sel), .rs2_sel(rs2_sel)
   );
 
-  // monta exp e mask para o opcode e o result_lsb atuais
+  // monta exp e mask para o opcode e o branch_taken atuais
   task expected;
     begin
       //                  PC     REG    ALUOp  wm    wr    s1    s2
@@ -40,7 +40,7 @@ module tb_controller;
         I:     begin exp = {2'd0, 2'd1, 2'b11, 1'b0, 1'b1, 1'b0, 1'b1}; mask = 10'b11_11_11_1111; end
         LW:    begin exp = {2'd0, 2'd0, 2'b00, 1'b0, 1'b1, 1'b0, 1'b1}; mask = 10'b11_11_11_1111; end
         SW:    begin exp = {2'd0, 2'd0, 2'b00, 1'b1, 1'b0, 1'b0, 1'b1}; mask = 10'b11_00_11_1111; end
-        B:     begin exp = {result_lsb ? 2'd2 : 2'd0,
+        B:     begin exp = {branch_taken ? 2'd2 : 2'd0,
                                   2'd0, 2'b01, 1'b0, 1'b0, 1'b0, 1'b0}; mask = 10'b11_00_11_1111; end
         LUI:   begin exp = {2'd0, 2'd2, 2'b00, 1'b0, 1'b1, 1'b0, 1'b0}; mask = 10'b11_11_00_1100; end
         AUIPC: begin exp = {2'd0, 2'd1, 2'b00, 1'b0, 1'b1, 1'b1, 1'b1}; mask = 10'b11_11_11_1111; end
@@ -60,7 +60,7 @@ module tb_controller;
       if ((got & mask) !== (exp & mask)) begin
         errors = errors + 1;
         $display("[ERRO] opcode=%b lsb=%b -> PC_sel=%0d REG_sel=%0d ALU_Op=%b we_mem=%b we_reg=%b rs1_sel=%b rs2_sel=%b",
-                 opcode, result_lsb, PC_sel, REG_sel, ALU_Op, we_mem, we_reg, rs1_sel, rs2_sel);
+                 opcode, branch_taken, PC_sel, REG_sel, ALU_Op, we_mem, we_reg, rs1_sel, rs2_sel);
         $display("       esperado  PC_sel=%0d REG_sel=%0d ALU_Op=%b we_mem=%b we_reg=%b rs1_sel=%b rs2_sel=%b (mascara %b)",
                  exp[9:8], exp[7:6], exp[5:4], exp[3], exp[2], exp[1], exp[0], mask);
       end
@@ -70,11 +70,11 @@ module tb_controller;
   initial begin
     $display("  opcode   lsb PC REG ALUOp wm wr s1 s2");
     $monitor("  %b  %b   %0d  %0d   %b    %b  %b  %b  %b",
-             opcode, result_lsb, PC_sel, REG_sel, ALU_Op, we_mem, we_reg, rs1_sel, rs2_sel);
+             opcode, branch_taken, PC_sel, REG_sel, ALU_Op, we_mem, we_reg, rs1_sel, rs2_sel);
 
     // as 9 classes de instrução, com desvio tomado e não tomado
     for (lsb = 0; lsb < 2; lsb = lsb + 1) begin
-      result_lsb = lsb;
+      branch_taken = lsb;
       opcode = R;     check;
       opcode = I;     check;
       opcode = LW;    check;
@@ -91,7 +91,7 @@ module tb_controller;
     // todos os 128 opcodes: os inválidos não podem escrever nem desviar
     for (op = 0; op < 128; op = op + 1)
       for (lsb = 0; lsb < 2; lsb = lsb + 1) begin
-        opcode = op; result_lsb = lsb;
+        opcode = op; branch_taken = lsb;
         check;
       end
 

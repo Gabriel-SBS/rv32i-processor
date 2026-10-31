@@ -18,6 +18,6 @@ module regfile_alu (clk, rst_n, we, ALUSrc, ALUControl, rs1, rs2, rd, imm, resul
 
   mux2 mux_src_b (.s(ALUSrc), .a(imm), .b(rs2_o), .o(src_b));
 
-  alu u_alu (.a(rs1_o), .b(src_b), .ALU_Control(ALUControl), .result(result));
+  ALU u_alu (.a(rs1_o), .b(src_b), .ALUControl(ALUControl), .result(result), .branch_taken());
 
 endmodule

@@ -8,7 +8,7 @@ module controller #(
     parameter DATA_W = 32
 )(
     input      [6:0]           opcode,
-    input  result_lsb,
+    input                      branch_taken,   // da ULA: condição do desvio verdadeira
     output reg [PC_SEL_W-1:0]  PC_sel,
     output reg [REG_SEL_W-1:0] REG_sel,
     output reg [1:0]           ALU_Op,
@@ -69,7 +69,7 @@ module controller #(
                 rs1_sel = 0;
                 rs2_sel = 0;
                 we_mem = 0;
-                if (result_lsb) begin
+                if (branch_taken) begin
                     PC_sel = 2;
                 end else begin
                     PC_sel = 0;

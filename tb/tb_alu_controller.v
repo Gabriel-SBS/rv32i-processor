@@ -7,10 +7,10 @@
 //   ALU_Op = 11 -> tipo I (funct7[5] só escolhe SRAI; em ADDI é bit do imediato)
 module tb_alu_controller;
 
-  localparam ADD  = 4'b0000, SUB  = 4'b0001, AND  = 4'b0010, OR   = 4'b0011,
-             XOR  = 4'b0100, SLL  = 4'b0101, SRL  = 4'b0110, SRA  = 4'b0111,
-             EQ   = 4'b1000, ULT  = 4'b1001, UGTE = 4'b1010, SLT  = 4'b1011,
-             SGTE = 4'b1100, NE   = 4'b1101;
+  localparam ADD  = 4'b0000, SLL  = 4'b0001, SLT  = 4'b0010, SLTU = 4'b0011,
+             XOR  = 4'b0100, SRL  = 4'b0101, OR   = 4'b0110, AND  = 4'b0111,
+             SUB  = 4'b1000, BEQ  = 4'b1001, BNE  = 4'b1010, BGE  = 4'b1011,
+             BLT  = 4'b1100, SRA  = 4'b1101, BLTU = 4'b1110, BGEU = 4'b1111;
 
   reg  [1:0] ALU_Op;
   reg  [2:0] funct3;
@@ -29,12 +29,12 @@ module tb_alu_controller;
         2'b00: ref_ctrl = ADD;
         2'b01:
           case (f)
-            3'b000:  ref_ctrl = EQ;     // beq
-            3'b001:  ref_ctrl = NE;     // bne
-            3'b100:  ref_ctrl = SLT;    // blt
-            3'b101:  ref_ctrl = SGTE;   // bge
-            3'b110:  ref_ctrl = ULT;    // bltu
-            3'b111:  ref_ctrl = UGTE;   // bgeu
+            3'b000:  ref_ctrl = BEQ;    // beq
+            3'b001:  ref_ctrl = BNE;    // bne
+            3'b100:  ref_ctrl = BLT;    // blt
+            3'b101:  ref_ctrl = BGE;    // bge
+            3'b110:  ref_ctrl = BLTU;   // bltu
+            3'b111:  ref_ctrl = BGEU;   // bgeu
             default: ref_ctrl = ADD;    // funct3 010/011 não existem em branch
           endcase
         default:
@@ -42,7 +42,7 @@ module tb_alu_controller;
             3'b000:  ref_ctrl = (o == 2'b10 && f7[5]) ? SUB : ADD;  // add/sub, addi
             3'b001:  ref_ctrl = SLL;
             3'b010:  ref_ctrl = SLT;
-            3'b011:  ref_ctrl = ULT;
+            3'b011:  ref_ctrl = SLTU;
             3'b100:  ref_ctrl = XOR;
             3'b101:  ref_ctrl = f7[5] ? SRA : SRL;
             3'b110:  ref_ctrl = OR;

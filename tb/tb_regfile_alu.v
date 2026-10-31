@@ -2,10 +2,10 @@
 
 module tb_regfile_alu;
 
-  localparam ADD  = 4'b0000, SUB  = 4'b0001, AND  = 4'b0010, OR   = 4'b0011,
-             XOR  = 4'b0100, SLL  = 4'b0101, SRL  = 4'b0110, SRA  = 4'b0111,
-             EQ   = 4'b1000, ULT  = 4'b1001, UGTE = 4'b1010, SLT  = 4'b1011,
-             SGTE = 4'b1100, NE   = 4'b1101;
+  localparam ADD  = 4'b0000, SLL  = 4'b0001, SLT  = 4'b0010, SLTU = 4'b0011,
+             XOR  = 4'b0100, SRL  = 4'b0101, OR   = 4'b0110, AND  = 4'b0111,
+             SUB  = 4'b1000, BEQ  = 4'b1001, BNE  = 4'b1010, BGE  = 4'b1011,
+             BLT  = 4'b1100, SRA  = 4'b1101, BLTU = 4'b1110, BGEU = 4'b1111;
 
   localparam N_RAND = 5000;
 
@@ -37,12 +37,14 @@ module tb_regfile_alu;
         SLL:     ref_alu = x << y[4:0];
         SRL:     ref_alu = x >> y[4:0];
         SRA:     ref_alu = $signed(x) >>> y[4:0];
-        EQ:      ref_alu = (x == y);
-        ULT:     ref_alu = (x < y);
-        UGTE:    ref_alu = (x >= y);
         SLT:     ref_alu = ($signed(x) < $signed(y));
-        SGTE:    ref_alu = ($signed(x) >= $signed(y));
-        NE:      ref_alu = (x != y);
+        SLTU:    ref_alu = (x < y);
+        BEQ:     ref_alu = (x == y);
+        BNE:     ref_alu = (x != y);
+        BLT:     ref_alu = ($signed(x) < $signed(y));
+        BGE:     ref_alu = ($signed(x) >= $signed(y));
+        BLTU:    ref_alu = (x < y);
+        BGEU:    ref_alu = (x >= y);
         default: ref_alu = 32'b0;
       endcase
     end
@@ -102,7 +104,7 @@ module tb_regfile_alu;
     op(SLT, 5'd13, 5'd11, 5'd10, 1'b0, 32'd0, 1'b1);
 
     for (i = 0; i < N_RAND; i = i + 1)
-      op($unsigned($random) % 14, $random, $random, $random, $random, $random, $random);
+      op($random, $random, $random, $random, $random, $random, $random);
 
     for (i = 0; i < 32; i = i + 1) check_reg(i);
 
