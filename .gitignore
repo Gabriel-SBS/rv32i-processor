@@ -1,6 +1,3 @@
-# Documentos
-*.pdf
-
 # Simulação (Icarus Verilog / Verilator / GTKWave)
 *.vvp
 *.out
@@ -35,3 +32,14 @@ xcelium.d/
 *.diag
 xrun.key
 .simvision/
+
+# Python
+__pycache__/
+*.pyc
+
+# LaTeX
+*.aux
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk

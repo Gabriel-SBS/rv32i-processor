@@ -1,0 +1,16 @@
+%% Estágio 4: memória de dados.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_memoria.mmd -o arq_memoria.png -s 3 -b white
+flowchart LR
+    RES(["ULA: result"]):::ext
+    RS2(["rs2"]):::ext
+    F3(["funct3"]):::ext
+    WE(["we_mem"]):::ext
+    DMEM["Memória de dados<br/>512 x 32 bits"]
+    OUT(["mem_o → write-back"]):::ext
+
+    RES -- endereço --> DMEM
+    RS2 -- wdata --> DMEM
+    F3 -- "tamanho do acesso" --> DMEM
+    WE --> DMEM
+    DMEM --> OUT
+    classDef ext fill:#f4f4f4,stroke:#999,stroke-dasharray:4 3,color:#444

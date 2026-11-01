@@ -1,0 +1,16 @@
+%% Visão geral: os cinco estágios do processador de ciclo único.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_visao_geral.mmd -o arq_visao_geral.png -s 3 -b white
+flowchart LR
+    B["1. Busca<br/>PC, memória de instruções,<br/>próximo PC"]
+    D["2. Decodificação<br/>controller, alu_controller,<br/>banco de registradores, imm_gen"]
+    E["3. Execução<br/>muxes src_a e src_b, ULA"]
+    M["4. Memória<br/>memória de dados"]
+    W["5. Write-back<br/>mux REG_sel"]
+
+    B -- instr --> D
+    D -- "rs1, rs2, imm" --> E
+    E -- result --> M
+    M -- mem_o --> W
+    E -- result --> W
+    W -- "dado para rd" --> D
+    E -. "branch_taken, result & ~1" .-> B

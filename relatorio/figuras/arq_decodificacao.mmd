@@ -1,0 +1,27 @@
+%% Estágio 2: decodificação, controle e leitura dos registradores.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_decodificacao.mmd -o arq_decodificacao.png -s 3 -b white
+flowchart LR
+    INSTR(["instr"]):::ext
+    BT(["ULA: branch_taken"]):::ext
+    WBIN(["write-back: dado"]):::ext
+    CTRL["controller"]
+    ALUCTRL["alu_controller"]
+    RF["Banco de<br/>registradores"]
+    IMM["imm_gen"]
+    SINAIS(["we_reg, we_mem, rs1_sel,<br/>rs2_sel, REG_sel, PC_sel"]):::ext
+    ALUC(["ALU_Control → ULA"]):::ext
+    OPER(["rs1, rs2 → execução"]):::ext
+    IMMOUT(["imm → execução,<br/>PC + imm, write-back"]):::ext
+
+    INSTR -- opcode --> CTRL
+    INSTR -- "funct3, funct7" --> ALUCTRL
+    INSTR -- "rs1, rs2, rd" --> RF
+    INSTR --> IMM
+    BT --> CTRL
+    WBIN --> RF
+    CTRL -- ALU_Op --> ALUCTRL
+    CTRL --> SINAIS
+    ALUCTRL --> ALUC
+    RF --> OPER
+    IMM --> IMMOUT
+    classDef ext fill:#f4f4f4,stroke:#999,stroke-dasharray:4 3,color:#444
