@@ -76,7 +76,7 @@ subida de \texttt{clk}. O registrador \texttt{x0} vale sempre zero: escritas nel
 \figura{arq_busca}{Busca da instrução e cálculo do próximo PC.}
 
 O PC endereça a memória de instruções, que tem 256 palavras de 32 bits, lidas de
-\path{instructions/instruction_control.hex} no início da simulação. O endereço é
+\path{instructions/imem.hex} no início da simulação. O endereço é
 \texttt{pc[9:2]}, então os bits 1:0 são ignorados. No \texttt{tb\_processor}, o programa
 escolhido com \texttt{+TEST=<nome>} é carregado por cima desse arquivo.
 
@@ -230,7 +230,9 @@ O código-fonte dos programas (\texttt{.s}), o montador \texttt{rv32i\_asm.py}, 
 \texttt{rv32i\_sim.py} e o script \texttt{gerar\_todos.sh}, que gera os \texttt{.hex} e os
 \texttt{.regs}, estão em \path{instructions/arquivos_assembly/Treino_RISC_V/testes/}.
 
-Todos os testes rodam com \texttt{sim/run\_xrun.sh} no Cadence Xcelium 25.03.
+Todos os testes rodam com \texttt{sim/run\_xrun.sh} no Cadence Xcelium 25.03. Também
+conferimos com o Icarus Verilog 12, pelo \texttt{sim/run\_iverilog.sh}, e os resultados
+foram os mesmos.
 
 \section{Resultados}
 

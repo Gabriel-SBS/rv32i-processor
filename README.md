@@ -117,6 +117,15 @@ Para ver as formas de onda do processador no SimVision, já com os sinais agrupa
 SHM=sim/build/tb_processor_05_lui_auipc.shm CURSOR=364 simvision -input sim/simvision_processor.tcl
 ```
 
+### Como rodar (Icarus Verilog)
+
+Sem acesso ao Xcelium, os mesmos testes rodam no Icarus Verilog (testado com a versão 12):
+
+```bash
+sim/run_iverilog.sh                     # todos os testbenches e os 10 programas
+sim/run_iverilog.sh tb_alu tb_processor # só os indicados
+```
+
 ### Situação atual do processador
 
 Os 10 programas passam, com o mesmo número de ciclos que o simulador de referência (de 51 ciclos no 04 a 723 no 10). Três bugs foram encontrados por eles e corrigidos:
@@ -134,7 +143,7 @@ Os 10 programas passam, com o mesmo número de ciclos que o simulador de referê
 - [x] ULA
 - [x] Integração banco de registradores + ULA
 - [x] PC (`pc`) e somadores (`adder`): PC + 4 e destino de desvio e salto
-- [x] Memória de instruções (`instruction_memory`) carregada de `instructions/instruction_control.hex`
+- [x] Memória de instruções (`instruction_memory`) carregada de `instructions/imem.hex`
 - [x] Memória de dados (`dmem`)
 - [x] Gerador de imediatos (`imm_gen`)
 - [x] Unidade de controle (`controller`, `alu_controller`) e `mux4`

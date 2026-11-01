@@ -8,7 +8,7 @@ module instruction_memory #(
     reg [31:0] mem [0:MEM_SIZE-1];
 
     initial begin
-        $readmemh("instructions/instruction_control.hex", mem);
+        $readmemh("instructions/imem.hex", mem);
     end
 
     always @(*) begin

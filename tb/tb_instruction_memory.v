@@ -40,11 +40,11 @@ module tb_instruction_memory;
 
   initial begin
     addr = 0;
-    hex_file = $fopen("instructions/instruction_control.hex", "r");
+    hex_file = $fopen("instructions/imem.hex", "r");
     if (hex_file == 0)
       $fatal(1, "HEX nao encontrado: execute a partir da pasta que contem instructions/");
     $fclose(hex_file);
-    $readmemh("instructions/instruction_control.hex", expected);
+    $readmemh("instructions/imem.hex", expected);
 
     // se o .hex não carregou direito, para aqui em vez de comparar X com X
     for (i = 0; i < PROGRAM_WORDS; i = i + 1) begin
