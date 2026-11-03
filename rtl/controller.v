@@ -12,7 +12,8 @@ module controller #(
     output reg [PC_SEL_W-1:0]  PC_sel,
     output reg [REG_SEL_W-1:0] REG_sel,
     output reg [1:0]           ALU_Op,
-    output reg                 we_mem, we_reg, rs1_sel, rs2_sel
+    output reg                 we_mem, we_reg, rs1_sel, rs2_sel,
+    output reg                 halt            // ecall/ebreak: processador parado
 );
     localparam R     = 7'b0110011;
     localparam LW    = 7'b0000011;
@@ -23,8 +24,11 @@ module controller #(
     localparam AUIPC = 7'b0010111;
     localparam JAL   = 7'b1101111;
     localparam JALR  = 7'b1100111;
+    localparam FENCE  = 7'b0001111;
+    localparam SYSTEM = 7'b1110011;  // ecall, ebreak
 
     always @(*) begin
+        halt = 0;
         we_reg = 0;
         rs1_sel = 0;
         rs2_sel = 0;
@@ -125,6 +129,20 @@ module controller #(
                 PC_sel = 0;
                 ALU_Op = 2'b11;
             end
+
+            // ciclo único, sem cache e com um só hart: a ordem dos acessos
+            // já é a do programa, então fence só avança o PC
+            FENCE : begin
+                PC_sel = 0;
+            end
+
+            // sem modo privilegiado nem CSRs: ecall e ebreak param o
+            // processador, com o PC parado na própria instrução
+            SYSTEM : begin
+                halt = 1;
+                PC_sel = 3;
+            end
+
             default: begin
                 we_reg = 0;
                 rs1_sel = 0;

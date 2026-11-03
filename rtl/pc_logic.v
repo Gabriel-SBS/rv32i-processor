@@ -34,7 +34,7 @@ module pc_logic (
         .a (pc_plus4),
         .b ({alu_result[31:1], 1'b0}),
         .c (pc_target),
-        .d (pc_plus4),
+        .d (pc_o),                     // PC_sel = 3: PC parado (ecall/ebreak)
         .o (pc_next)
     );
 endmodule

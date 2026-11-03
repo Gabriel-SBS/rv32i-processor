@@ -7,8 +7,8 @@
 //   0x018 -> 0x118                     JAL, +256             (PC_sel = 2)
 //   0x118 -> 0x040                     JALR para 0x41 -> bit 0 zerado (PC_sel = 1)
 //   0x040 -> 0x200                     JALR para 0x200       (PC_sel = 1)
-//   0x200 -> 0x204                     PC_sel = 3 (não usado) -> PC + 4
-//   0x204 -> 0x208                     desvio não tomado     (PC_sel = 0, imm ignorado)
+//   0x200 -> 0x200 -> 0x200            PC parado (ecall/ebreak) (PC_sel = 3)
+//   0x200 -> 0x204                     desvio não tomado     (PC_sel = 0, imm ignorado)
 //   reset assíncrono -> 0x000, depois 0x004
 module tb_pc_logic;
 
@@ -73,8 +73,9 @@ module tb_pc_logic;
     PC_sel = 2'd2; imm = 32'h0000_0100;       expected = 32'h0000_0118; @(negedge clk); // JAL +256
     PC_sel = 2'd1; alu_result = 32'h0000_0041; expected = 32'h0000_0040; @(negedge clk); // JALR, bit 0 zerado
     PC_sel = 2'd1; alu_result = 32'h0000_0200; expected = 32'h0000_0200; @(negedge clk); // JALR
-    PC_sel = 2'd3;                            expected = 32'h0000_0204; @(negedge clk); // não usado
-    PC_sel = 2'd0; imm = 32'h0000_0040;       expected = 32'h0000_0208; @(negedge clk); // desvio não tomado
+    PC_sel = 2'd3;                            expected = 32'h0000_0200; @(negedge clk); // PC parado
+    PC_sel = 2'd3;                            expected = 32'h0000_0200; @(negedge clk); // continua parado
+    PC_sel = 2'd0; imm = 32'h0000_0040;       expected = 32'h0000_0204; @(negedge clk); // desvio não tomado
 
     // reset assíncrono: PC vai a 0 na hora
     rst = 1'b0; #1;

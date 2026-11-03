@@ -9,7 +9,8 @@ module datapath #(
     parameter ALU_CC_W  = 4,   // ALU_Control width
     parameter PC_SEL_W  = 2,   // PC_sel width
     parameter REG_SEL_W = 2,   // REG_sel width
-    parameter ADDR_W    = 5    // Register address width
+    parameter ADDR_W    = 5,   // Register address width
+    parameter IMEM_FILE = "instructions/programs/10_algoritmo_final.hex"  // programa carregado
 )(
     input                  clk, rst_n, we_mem, we_reg, rs1_sel, rs2_sel,
     input  [ALU_CC_W-1:0]  ALU_Control,
@@ -43,7 +44,7 @@ module datapath #(
         .pc_o(pc), .pc_plus4(pc_plus4), .pc_next(pc_next), .pc_target(pc_target)
     );
 
-    instruction_memory u_instruction_memory (.addr(pc), .data(instr));
+    instruction_memory #(.INIT_FILE(IMEM_FILE)) u_instruction_memory (.addr(pc), .data(instr));
 
     imm_gen u_imm_gen (.instr(instr), .imm_ext(imm_ext));
 

@@ -35,3 +35,10 @@ xcelium.d/
 *.diag
 xrun.key
 .simvision/
+
+# Cadence Genus
+syn/build/
+syn/fv/
+.rs_*.tstamp
+genus.cmd*
+genus.log*

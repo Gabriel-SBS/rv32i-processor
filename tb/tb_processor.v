@@ -4,8 +4,9 @@
 //
 //   +TEST=01_alu_reg   escolhe o programa (padrão: 01_alu_reg)
 //
-// O programa termina no laço "fim: j fim" (0000006F). Quando o PC chega nele,
-// o testbench confere:
+// O programa termina no laço "fim: j fim" (0000006F) ou em ecall/ebreak, que
+// param o processador (saída halt). Depois da parada, o testbench espera mais
+// alguns ciclos (nada pode mudar) e confere:
 //   - x31 == 1 (convenção dos programas: 1 = passou, 0xBAD = falhou em x30)
 //   - PC de parada igual ao do simulador de referência
 //   - os 32 registradores iguais aos de <TEST>.regs
@@ -14,9 +15,11 @@ module tb_processor;
 
   localparam MAX_CYCLES = 5000;
   localparam HALT       = 32'h0000_006F;   // jal x0, 0
+  localparam EXTRA      = 5;               // ciclos depois da parada
 
   reg         clk = 0, rst_n = 0;
   wire [31:0] result;
+  wire        halted;
 
   reg [8*64-1:0]  test;
   reg [8*128-1:0] hex_file, regs_file;
@@ -25,8 +28,9 @@ module tb_processor;
   integer checks = 0;
   integer cycles = 0;
   integer fd, i;
+  reg [31:0] pc_stop;
 
-  processor dut (.clk(clk), .rst_n(rst_n), .result(result));
+  processor dut (.clk(clk), .rst_n(rst_n), .result(result), .halt(halted));
 
   always #5 clk = ~clk;
 
@@ -70,18 +74,24 @@ module tb_processor;
     repeat (2) @(posedge clk);
     @(negedge clk) rst_n = 1;
 
-    // executa até o laço final
-    while (instr !== HALT && cycles < MAX_CYCLES) begin
+    // executa até o laço final ou até ecall/ebreak
+    while (instr !== HALT && halted !== 1'b1 && cycles < MAX_CYCLES) begin
       @(posedge clk);
       cycles = cycles + 1;
       #1;
     end
 
-    if (instr !== HALT) begin
+    if (instr !== HALT && halted !== 1'b1) begin
       errors = errors + 1;
-      $display("[ERRO] %0s: nao chegou ao laco final em %0d ciclos (pc=%h instr=%h)",
+      $display("[ERRO] %0s: nao chegou ao fim em %0d ciclos (pc=%h instr=%h)",
                test, MAX_CYCLES, pc, instr);
     end
+
+    // depois da parada, o PC fica no mesmo lugar e nada mais é escrito
+    pc_stop = pc;
+    repeat (EXTRA) @(posedge clk);
+    #1;
+    check(pc, pc_stop, "pc parado");
 
     check(reg_x(31), 32'd1, "x31 (status)");
     if (reg_x(31) === 32'hBAD)
