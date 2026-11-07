@@ -1,0 +1,26 @@
+%% Estágio 1: busca e cálculo do próximo PC.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_busca.mmd -o arq_busca.png -s 3 -b white
+flowchart LR
+    MUXPC{{"mux próximo PC<br/>(PC_sel)"}}
+    PC["PC"]
+    IMEM["Memória de<br/>instruções"]
+    ADD4["PC + 4"]
+    ADDIMM["PC + imm"]
+    IMMIN(["imm_gen: imm"]):::ext
+    ALUIN(["ULA: result"]):::ext
+    SEL(["controller: PC_sel"]):::ext
+    INSTR(["instr → decodificação"]):::ext
+    RET(["PC + 4 → write-back"]):::ext
+
+    MUXPC --> PC
+    PC -- "pc[9:2]" --> IMEM
+    IMEM --> INSTR
+    PC --> ADD4
+    PC --> ADDIMM
+    IMMIN --> ADDIMM
+    ADD4 -- 00 --> MUXPC
+    ALUIN -- "01: result & ~1" --> MUXPC
+    ADDIMM -- 10 --> MUXPC
+    SEL -.-> MUXPC
+    ADD4 --> RET
+    classDef ext fill:#f4f4f4,stroke:#999,stroke-dasharray:4 3,color:#444

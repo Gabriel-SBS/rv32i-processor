@@ -1,0 +1,24 @@
+%% Estágio 3: escolha dos operandos e ULA.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_execucao.mmd -o arq_execucao.png -s 3 -b white
+flowchart LR
+    RS1(["rs1"]):::ext
+    PCIN(["PC"]):::ext
+    RS2(["rs2"]):::ext
+    IMMIN(["imm"]):::ext
+    ALUC(["ALU_Control"]):::ext
+    MUXA{{"mux src_a<br/>(rs1_sel)"}}
+    MUXB{{"mux src_b<br/>(rs2_sel)"}}
+    ALU["ULA"]
+    RES(["result → memória,<br/>write-back, próximo PC"]):::ext
+    BT(["branch_taken → controller"]):::ext
+
+    RS1 -- 0 --> MUXA
+    PCIN -- 1 --> MUXA
+    RS2 -- 0 --> MUXB
+    IMMIN -- 1 --> MUXB
+    MUXA -- src_a --> ALU
+    MUXB -- src_b --> ALU
+    ALUC --> ALU
+    ALU --> RES
+    ALU --> BT
+    classDef ext fill:#f4f4f4,stroke:#999,stroke-dasharray:4 3,color:#444

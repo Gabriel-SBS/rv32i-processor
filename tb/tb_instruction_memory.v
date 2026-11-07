@@ -7,7 +7,7 @@
 module tb_instruction_memory;
 
   localparam MEM_SIZE = 256;
-  // Quantidade de palavras do programa atual; atualize ao ampliar o HEX.
+  // palavras no .hex atual (mudar se o programa crescer)
   localparam PROGRAM_WORDS = 37;
 
   reg  [31:0] addr;
@@ -28,7 +28,7 @@ module tb_instruction_memory;
     input [31:0] expected_data;
     begin
       addr = address;
-      #1; // Leitura combinacional: nao precisa de clock.
+      #1; // leitura combinacional, sem clock
       checks = checks + 1;
       if (data !== expected_data) begin
         errors = errors + 1;
@@ -40,37 +40,35 @@ module tb_instruction_memory;
 
   initial begin
     addr = 0;
-    hex_file = $fopen("instructions/instruction_control.hex", "r");
+    hex_file = $fopen("instructions/imem.hex", "r");
     if (hex_file == 0)
       $fatal(1, "HEX nao encontrado: execute a partir da pasta que contem instructions/");
     $fclose(hex_file);
-    $readmemh("instructions/instruction_control.hex", expected);
+    $readmemh("instructions/imem.hex", expected);
 
-    // Impede que referencias indefinidas facam um carregamento falho passar.
+    // se o .hex não carregou direito, para aqui em vez de comparar X com X
     for (i = 0; i < PROGRAM_WORDS; i = i + 1) begin
       if ((^expected[i]) === 1'bx)
         $fatal(1, "Palavra %0d ausente ou indefinida no HEX", i);
     end
 
-    // PC em bytes: 0, 4, 8, ... selecionam palavras consecutivas.
+    // endereço em bytes: 0, 4, 8, ... = palavras seguidas
     for (i = 0; i < PROGRAM_WORDS; i = i + 1)
       check_read(i * 4, expected[i]);
 
-    // Saltos para tras e para frente, sem depender de um clock.
+    // volta para o início e pula para o fim
     check_read(0, expected[0]);
     check_read((PROGRAM_WORDS - 1) * 4, expected[PROGRAM_WORDS - 1]);
 
-    // Comportamento atual: os dois bits inferiores sao ignorados.
-    // Isto nao representa deteccao de uma excecao por desalinhamento.
+    // bits 1:0 são ignorados (não tem exceção de desalinhamento)
     check_read(1, expected[0]);
     check_read(2, expected[0]);
     check_read(3, expected[0]);
 
-    // Comportamento atual em simulacao: posicoes nao carregadas retornam X,
-    // sem sinalizar uma excecao.
+    // posições que o .hex não preenche ficam em X
     check_read(PROGRAM_WORDS * 4, 32'hxxxx_xxxx);
     check_read((MEM_SIZE - 1) * 4, 32'hxxxx_xxxx);
-    // O indice usa so addr[9:2]: enderecos acima da memoria dao a volta.
+    // só addr[9:2] conta, então endereço acima do fim dá a volta
     check_read(MEM_SIZE * 4, expected[0]);
     check_read(32'hffff_fffc, 32'hxxxx_xxxx);   // = palavra MEM_SIZE - 1
 

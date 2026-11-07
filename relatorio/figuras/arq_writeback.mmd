@@ -1,0 +1,18 @@
+%% Estágio 5: escolha do valor gravado em rd.
+%% Para gerar o PNG: npx -y @mermaid-js/mermaid-cli -i arq_writeback.mmd -o arq_writeback.png -s 3 -b white
+flowchart LR
+    MEMO(["memória: mem_o"]):::ext
+    RES(["ULA: result"]):::ext
+    IMMIN(["imm_gen: imm"]):::ext
+    PC4(["PC + 4"]):::ext
+    SEL(["controller: REG_sel"]):::ext
+    MUXWB{{"mux write-back<br/>(REG_sel)"}}
+    RF(["banco de registradores:<br/>rd, se we_reg = 1"]):::ext
+
+    MEMO -- 00 --> MUXWB
+    RES -- 01 --> MUXWB
+    IMMIN -- 10 --> MUXWB
+    PC4 -- 11 --> MUXWB
+    SEL -.-> MUXWB
+    MUXWB --> RF
+    classDef ext fill:#f4f4f4,stroke:#999,stroke-dasharray:4 3,color:#444

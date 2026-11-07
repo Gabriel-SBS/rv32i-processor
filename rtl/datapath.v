@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// Banco de registradores + ULA: rd <= rs1 op (ALUSrc ? imm : rs2)
+// Datapath: PC, memórias, banco de registradores, ULA e os muxes entre eles
 module datapath #(
     /** Macros for signal bit counts **/
     parameter PC_W      = 32,  // PC width

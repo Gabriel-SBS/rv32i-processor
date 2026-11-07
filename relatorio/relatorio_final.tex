@@ -1,0 +1,407 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\IfFileExists{brazil.ldf}{\usepackage[brazil]{babel}}{%
+  \renewcommand{\figurename}{Figura}
+  \renewcommand{\tablename}{Tabela}
+  \renewcommand{\contentsname}{Sumário}
+}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+\lstset{basicstyle=\ttfamily\small, columns=fullflexible, frame=single, breaklines=true}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\newcommand{\figura}[3][\textwidth]{%
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{figuras/#2.png}{%
+      \includegraphics[width=#1,height=0.75\textheight,keepaspectratio]{figuras/#2.png}}{%
+      \fbox{\parbox[c][4cm][c]{0.9\textwidth}{\centering\ttfamily figuras/#2.png}}}
+    \caption{#3}
+    \label{fig:#2}
+  \end{figure}}
+
+\title{Processador RISC-V RV32I de ciclo único\\[0.3em]
+  \large Relatório final}
+\author{Gabriel Sena Barbosa Silva\\
+  Jair Rocha Souza\\
+  João Vítor Cedraz Carneiro\\
+  Luiz Augusto dos Santos Oliveira\\
+  Tássio Carvalho Rodrigues\\[0.8em]
+  Programa CI Digital --- CEPEDI}
+\date{31 de outubro de 2026}
+
+\begin{document}
+\maketitle
+
+\noindent Repositório: \texttt{Gabriel-SBS/rv32i-processor}
+
+\tableofcontents
+
+\section{Arquitetura}
+
+O processador implementa o conjunto de instruções base RV32I, de 32 bits, em ciclo único:
+cada instrução é buscada, decodificada, executada, acessa a memória quando precisa e grava
+o resultado no banco de registradores dentro de um único ciclo de clock.
+
+Para explicar o caminho de dados, dividimos o processador nos cinco estágios da
+Figura~\ref{fig:arq_visao_geral}. Não há registradores entre eles, porque o processador é de
+ciclo único; a divisão é só para organizar a explicação. Nas figuras de cada estágio, os blocos com contorno contínuo
+pertencem ao estágio, e os de contorno tracejado são sinais que vêm de outros estágios ou
+vão para eles. Os códigos Mermaid estão em \texttt{relatorio/figuras/arq\_*.mmd}.
+
+\figura{arq_visao_geral}{Visão geral: os cinco estágios e o que passa entre eles. A linha
+pontilhada é a volta para a busca, usada nos desvios e no JALR.}
+
+\subsection{Clock e reset}
+
+O reset \texttt{rst\_n} é ativo em nível baixo e assíncrono. Com \texttt{rst\_n = 0}, o PC vai
+para \texttt{0x00000000} na hora, sem esperar o clock. As escritas acontecem na borda de
+subida de \texttt{clk}. O registrador \texttt{x0} vale sempre zero: escritas nele são ignoradas.
+
+\subsection{Busca}
+
+\figura{arq_busca}{Busca da instrução e cálculo do próximo PC.}
+
+O PC endereça a memória de instruções, que tem 256 palavras de 32 bits, lidas de
+\path{instructions/imem.hex} no início da simulação. O endereço é
+\texttt{pc[9:2]}, então os bits 1:0 são ignorados. No \texttt{tb\_processor}, o programa
+escolhido com \texttt{+TEST=<nome>} é carregado por cima desse arquivo.
+
+Ao mesmo tempo, o \texttt{pc\_logic} calcula os candidatos a próximo PC, e um \texttt{mux4}
+escolhe entre eles pelo sinal \texttt{PC\_sel}:
+
+\begin{itemize}
+  \item \texttt{00}: \texttt{PC + 4}, na execução normal e quando o desvio não é tomado;
+  \item \texttt{01}: \verb|(rs1 + imm) & ~1|, no \texttt{JALR}, com o resultado vindo da ULA;
+  \item \texttt{10}: \texttt{PC + imm}, nos desvios tomados e no \texttt{JAL}.
+\end{itemize}
+
+A seleção \texttt{11} não é usada e também dá \texttt{PC + 4}. O valor \texttt{PC + 4} vai
+ainda para o write-back, porque é o endereço de retorno que o JAL e o JALR gravam em
+\texttt{rd}.
+
+\subsection{Decodificação}
+
+\figura{arq_decodificacao}{Decodificação. Cada campo da instrução vai para um bloco
+diferente.}
+
+A instrução é quebrada em campos, e cada campo vai para um bloco:
+
+\begin{itemize}
+  \item \texttt{controller} lê o \texttt{opcode} e gera \texttt{we\_reg}, \texttt{we\_mem},
+        \texttt{rs1\_sel}, \texttt{rs2\_sel}, \texttt{REG\_sel}, \texttt{PC\_sel} e
+        \texttt{ALU\_Op}. Nos desvios, quem diz se o salto acontece é a saída
+        \texttt{branch\_taken} da ULA: com ela em 1, o \texttt{controller} põe
+        \texttt{PC\_sel = 10}.
+  \item \texttt{alu\_controller} traduz \texttt{ALU\_Op}, \texttt{funct3} e \texttt{funct7[5]}
+        para o código de operação da ULA.
+  \item O banco de registradores tem 32 registradores de 32 bits, duas portas de leitura
+        combinacional (\texttt{rs1} e \texttt{rs2}) e uma de escrita (\texttt{rd}), que só
+        grava na borda de subida e com \texttt{we\_reg = 1}.
+  \item \texttt{imm\_gen} monta o imediato dos formatos I, S, B, U e J, com extensão de sinal.
+\end{itemize}
+
+\subsection{Execução}
+
+\figura{arq_execucao}{Escolha dos operandos e operação na ULA.}
+
+Dois muxes escolhem as entradas da ULA. O \texttt{src\_a} é \texttt{rs1}, ou o PC quando
+\texttt{rs1\_sel = 1} (AUIPC e JAL). O \texttt{src\_b} é \texttt{rs2}, ou o imediato quando
+\texttt{rs2\_sel = 1} (instruções do tipo I, loads, stores, LUI, AUIPC, JAL e JALR).
+
+A ULA é combinacional, com a interface \texttt{ALU (a, b, ALUControl, result, branch\_taken)}.
+A codificação segue o próprio RISC-V: nas instruções do tipo R,
+\texttt{ALUControl = \{funct7[5], funct3\}}. Os 16 códigos são usados
+(Tabela~\ref{tab:ula}).
+
+\begin{table}[H]
+  \centering
+  \caption{Códigos de operação da ULA.}
+  \label{tab:ula}
+  \begin{tabular}{cl@{\hspace{2.5em}}cl}
+    \toprule
+    \texttt{ALUControl} & Operação & \texttt{ALUControl} & Operação \\
+    \midrule
+    \texttt{0000} & ADD              & \texttt{1000} & SUB \\
+    \texttt{0001} & SLL              & \texttt{1001} & BEQ (\texttt{a == b}) \\
+    \texttt{0010} & SLT (com sinal)  & \texttt{1010} & BNE (\texttt{a != b}) \\
+    \texttt{0011} & SLTU (sem sinal) & \texttt{1011} & BGE (com sinal) \\
+    \texttt{0100} & XOR              & \texttt{1100} & BLT (com sinal) \\
+    \texttt{0101} & SRL              & \texttt{1101} & SRA \\
+    \texttt{0110} & OR               & \texttt{1110} & BLTU (sem sinal) \\
+    \texttt{0111} & AND              & \texttt{1111} & BGEU (sem sinal) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Os deslocamentos usam só \texttt{b[4:0]}. As comparações devolvem 1 ou 0 em \texttt{result}.
+A saída \texttt{branch\_taken} só sobe nos seis códigos de desvio, e apenas quando a condição
+é verdadeira. Num \texttt{SLT} que dá 1, por exemplo, ela continua em 0, então nenhuma
+instrução que não seja desvio consegue mudar o fluxo do programa.
+
+O \texttt{result} vai para a memória de dados, como endereço, e para o write-back. No JALR,
+ele também é o destino do salto.
+
+\subsection{Memória}
+
+\figura[0.75\textwidth]{arq_memoria}{Memória de dados e os sinais que ela recebe.}
+
+A memória de dados tem 512 palavras de 32 bits (2~KiB). O endereço, em bytes, vem do
+\texttt{result} da ULA, e o dado a gravar vem de \texttt{rs2}. O \texttt{funct3} da
+instrução diz o tamanho do acesso: byte (\texttt{sb}, \texttt{lb}, \texttt{lbu}), meia palavra
+(\texttt{sh}, \texttt{lh}, \texttt{lhu}) ou palavra (\texttt{sw}, \texttt{lw}). A escrita é
+síncrona, só com \texttt{we\_mem = 1}, e muda apenas os bytes do acesso. A leitura é
+combinacional: \texttt{lb} e \texttt{lh} estendem o sinal, e \texttt{lbu} e \texttt{lhu}
+completam com zeros.
+
+\subsection{Write-back}
+
+\figura[0.75\textwidth]{arq_writeback}{Mux de write-back, que escolhe o valor gravado em
+\texttt{rd}.}
+
+O último mux escolhe, pelo \texttt{REG\_sel}, o que será gravado em \texttt{rd}:
+
+\begin{itemize}
+  \item \texttt{00}: o dado lido da memória, nos loads;
+  \item \texttt{01}: o \texttt{result} da ULA, nas instruções dos tipos R e I e no AUIPC;
+  \item \texttt{10}: o imediato, no LUI;
+  \item \texttt{11}: \texttt{PC + 4}, no JAL e no JALR.
+\end{itemize}
+
+Stores e desvios não gravam nada. Nesses casos o \texttt{controller} deixa
+\texttt{we\_reg = 0} e a saída do mux é ignorada.
+
+\section{Instruções implementadas}
+
+\begin{table}[H]
+  \centering
+  \caption{Instruções do RV32I implementadas e testadas.}
+  \begin{tabularx}{\textwidth}{lcY}
+    \toprule
+    Grupo & Formato & Instruções \\
+    \midrule
+    Aritméticas e lógicas entre registradores & R & ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU \\
+    Aritméticas e lógicas com imediato & I & ADDI, ANDI, ORI, XORI, SLLI, SRLI, SRAI, SLTI, SLTIU \\
+    Loads & I & LB, LH, LW, LBU, LHU \\
+    Stores & S & SB, SH, SW \\
+    Desvios condicionais & B & BEQ, BNE, BLT, BGE, BLTU, BGEU \\
+    Saltos & J / I & JAL, JALR \\
+    Imediato superior & U & LUI, AUIPC \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Verificação}
+
+A verificação teve duas partes.
+
+Primeiro, cada bloco foi testado sozinho. São 14 testbenches, que combinam casos escritos à
+mão (valores-limite, estouro, reset, \texttt{x0}) com milhares de entradas aleatórias
+comparadas a um modelo de referência escrito dentro do próprio testbench.
+
+Depois, o processador inteiro executou 10 programas em assembly RV32I. Cada programa termina
+num laço \texttt{fim: j fim}. Quando o processador chega nesse laço, o \texttt{tb\_processor}
+confere:
+
+\begin{itemize}
+  \item se \texttt{x31 = 1}, valor que o próprio programa grava quando todos os seus subtestes passam;
+  \item se o PC parou no endereço esperado;
+  \item se os 32 registradores têm os mesmos valores calculados pelo simulador de referência
+        \texttt{rv32i\_sim.py}.
+\end{itemize}
+
+Os programas usam \texttt{x30} para guardar o número do subteste em andamento. Se algum falhar,
+o programa grava \texttt{0xBAD} em \texttt{x31}, e \texttt{x30} mostra em qual subteste parou.
+
+O código-fonte dos programas (\texttt{.s}), o montador \texttt{rv32i\_asm.py}, o simulador
+\texttt{rv32i\_sim.py} e o script \texttt{gerar\_todos.sh}, que gera os \texttt{.hex} e os
+\texttt{.regs}, estão em \path{instructions/arquivos_assembly/Treino_RISC_V/testes/}.
+
+Todos os testes rodam com \texttt{sim/run\_xrun.sh} no Cadence Xcelium 25.03. Também
+conferimos com o Icarus Verilog 12, pelo \texttt{sim/run\_iverilog.sh}, e os resultados
+foram os mesmos.
+
+\section{Resultados}
+
+\subsection{Testes de cada bloco}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Testbenches dos blocos. Todos passaram.}
+  \begin{tabularx}{\textwidth}{llrY}
+    \toprule
+    Bloco & Testbench & Verif. & O que é testado \\
+    \midrule
+    Somador & \texttt{tb\_adder} & 8 & PC + 4, imediato positivo e negativo, estouro de 32 bits \\
+    Mux 2:1 & \texttt{tb\_mux2} & 207 & as duas seleções, 200 casos aleatórios \\
+    Mux 4:1 & \texttt{tb\_mux4} & 7 & as quatro seleções \\
+    PC & \texttt{tb\_pc} & 11 & reset assíncrono, carga só na borda de subida \\
+    Próximo PC & \texttt{tb\_pc\_logic} & 18 & sequencial, desvio tomado e não tomado, JAL, JALR \\
+    ULA & \texttt{tb\_alu} & 51 & as 16 operações, os 6 desvios, \texttt{branch\_taken = 0} fora dos desvios \\
+    ULA contra modelo & \texttt{tb\_alu\_ref} & 23.400 & 3.400 casos de borda e 20.000 aleatórios \\
+    Banco de registradores & \texttt{tb\_register\_file} & 1.214 & duas portas de leitura, \texttt{x0}, \texttt{we = 0}, 500 aleatórios \\
+    Banco + ULA & \texttt{tb\_regfile\_alu} & 5.168 & instruções que usam o resultado da anterior, 5.000 aleatórias \\
+    Memória de dados & \texttt{tb\_data\_memory} & 3.559 & byte, meia palavra e palavra, 2.000 acessos aleatórios \\
+    Memória de instruções & \texttt{tb\_instruction\_memory} & 46 & leitura alinhada, posições vazias, endereço além do fim \\
+    Gerador de imediatos & \texttt{tb\_imm\_gen} & 4.526 & formatos I, S, B, U e J, 500 casos por opcode \\
+    Controle da ULA & \texttt{tb\_alu\_controller} & 329 & todas as combinações de \texttt{ALU\_Op}, \texttt{funct3} e \texttt{funct7[5]} \\
+    Unidade de controle & \texttt{tb\_controller} & 274 & 9 classes de instrução, os 128 opcodes \\
+    \midrule
+    Total & & 38.818 & \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Programas no processador completo}
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Programas executados no processador. Todos passaram, com o mesmo número de ciclos
+  do simulador de referência.}
+  \begin{tabularx}{\textwidth}{lrrY}
+    \toprule
+    Programa & Ciclos & Verif. & O que exercita \\
+    \midrule
+    01 \texttt{alu\_reg} & 70 & 34 & operações entre registradores \\
+    02 \texttt{alu\_imm} & 64 & 34 & operações com imediato \\
+    03 \texttt{shifts} & 77 & 34 & deslocamentos lógicos e aritméticos \\
+    04 \texttt{comparacoes} & 51 & 34 & comparações com e sem sinal \\
+    05 \texttt{lui\_auipc} & 55 & 34 & LUI e AUIPC \\
+    06 \texttt{load\_store\_word} & 84 & 34 & LW e SW com vários offsets \\
+    07 \texttt{load\_store\_byte\_half} & 90 & 34 & LB, LH, LBU, LHU, SB, SH \\
+    08 \texttt{branches} & 113 & 34 & os seis desvios condicionais \\
+    09 \texttt{jal\_jalr} & 66 & 34 & JAL, JALR e endereço de retorno \\
+    10 \texttt{algoritmo\_final} & 723 & 34 & soma de vetor, Fibonacci, bubble sort, contagem de bits e tamanho de string \\
+    \midrule
+    Total & 1.393 & 340 & \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Erros encontrados pelos programas}
+
+Os blocos passavam nos testes individuais, mas três programas acharam erros que só aparecem
+com tudo ligado:
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Erros encontrados e correções.}
+  \begin{tabularx}{\textwidth}{lYY}
+    \toprule
+    Programa & O que acontecia & Correção \\
+    \midrule
+    05 \texttt{lui\_auipc} & O AUIPC dava \texttt{PC + 2$\cdot$imm}: o mux de \texttt{src\_a}
+      recebia \texttt{pc\_target}, que já é \texttt{PC + imm}, em vez de \texttt{pc}
+      & \texttt{src\_a} passou a receber \texttt{pc} quando \texttt{rs1\_sel = 1} \\
+    07 \texttt{load\_store\_byte\_half} & LB, LH, LBU, LHU, SB e SH não funcionavam: a memória só
+      lia e escrevia palavras inteiras
+      & a memória passou a receber \texttt{funct3} e o endereço em bytes \\
+    10 \texttt{algoritmo\_final} & Com 64 palavras, os endereços \texttt{0x400} e \texttt{0x500}
+      caíam na mesma posição
+      & memória de 512 palavras, parâmetro \texttt{DM\_ADDR\_W = 9} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Formas de onda}
+
+As figuras foram geradas com o script \texttt{sim/figuras\_xrun.sh}. Ele simula cada programa no
+\texttt{xrun} e para a simulação com um breakpoint condicional na instrução de interesse
+(por exemplo, ``opcode igual a AUIPC''). A parada acontece na borda de descida do clock, no meio
+do ciclo, quando todos os sinais já estão estáveis.
+
+\begin{lstlisting}[language=bash]
+sim/figuras_xrun.sh              # simula todas as figuras
+sim/figuras_xrun.sh view fig04   # abre a fig04 com o cursor no ponto
+\end{lstlisting}
+
+Os sinais aparecem em grupos: clock e reset, busca, decodificação, controle, execução,
+memória e status do teste (\texttt{x30} e \texttt{x31}). O clock tem período de 10~ns e o
+reset é liberado em 20~ns.
+
+\figura{fig01}{Fim do reset (programa 01). Em 20~ns \texttt{rst\_n} sobe com o PC em
+\texttt{0x00000000}. A primeira instrução, \texttt{0x00000f93} (\texttt{addi x31, x0, 0}),
+já está na saída da memória de instruções, e o PC passa a avançar de 4 em 4.}
+
+\figura{fig02}{SUB (programa 01, 260~ns). A instrução \texttt{0x402081b3} é
+\texttt{sub x3, x1, x2}, no PC \texttt{0x60}, com \texttt{x1 = 0xA} e \texttt{x2 = 3}.
+Como \texttt{funct7 = 0x20}, o \texttt{alu\_controller} gera o código de SUB (\texttt{8})
+e a ULA devolve 7.
+\texttt{REG\_sel = 01} manda o resultado para \texttt{x3}.}
+
+\figura{fig03}{ADDI com imediato negativo (programa 02, 80~ns). \texttt{0x80000093} é
+\texttt{addi x1, x0, -2048}. O \texttt{imm\_gen} estende o sinal e \texttt{imm\_ext} vale
+\texttt{0xfffff800}. O campo \texttt{funct7} aparece como \texttt{0x40}, mas no tipo I esses
+bits fazem parte do imediato: \texttt{ALU\_Control} fica em 0 (ADD) e o resultado é
+\texttt{0xfffff800}.}
+
+\figura{fig04}{AUIPC (programa 05, 310~ns). \texttt{0x00000097} é \texttt{auipc x1, 0}, no PC
+\texttt{0x78}. Com \texttt{rs1\_sel = 1}, a entrada \texttt{src\_a} da ULA recebe o PC e o
+resultado é \texttt{0x78}. Era exatamente aqui que aparecia o erro do \texttt{PC + 2$\cdot$imm}.}
+
+\figura{fig05}{SB (programa 07, 520~ns). \texttt{0x002502a3} é \texttt{sb x2, 5(x10)}, com
+\texttt{x10 = 0x400} e \texttt{x2 = 0xAA}. A ULA calcula o endereço \texttt{0x405},
+\texttt{we\_mem} vai a 1 e, na borda de subida, só o byte desse endereço é escrito.}
+
+\figura{fig06}{LB (programa 07, 80~ns). \texttt{0x00050103} é \texttt{lb x2, 0(x10)}, com
+endereço \texttt{0x400}. O byte guardado ali é \texttt{0x01}, então \texttt{mem\_o} vale
+\texttt{0x00000001}, e \texttt{REG\_sel = 00} grava esse valor em \texttt{x2}.}
+
+\figura{fig07}{Desvio tomado (programa 08, 90~ns). \texttt{0x00208463} é
+\texttt{beq x1, x2, 8}, no PC \texttt{0x1c}. Os dois registradores valem 5, a ULA (código
+\texttt{9}, BEQ) põe
+\texttt{branch\_taken = 1} e o \texttt{controller} coloca \texttt{PC\_sel = 10}: o próximo PC
+é \texttt{0x24}.}
+
+\figura{fig08}{Desvio não tomado (programa 08, 110~ns). \texttt{0x10308663} é um
+\texttt{beq x1, x3} no PC \texttt{0x28}, com \texttt{x1 = 5} e \texttt{x3 = 6}. Como os valores
+são diferentes, \texttt{branch\_taken} fica em 0, \texttt{PC\_sel = 00} e a execução segue em
+\texttt{0x2c}.}
+
+\figura{fig09}{JAL (programa 09, 50~ns). \texttt{0x0d8000ef} é \texttt{jal x1, 0xd8}, no PC
+\texttt{0x0c}. O próximo PC é \texttt{0xe4} (\texttt{PC + imm}) e \texttt{REG\_sel = 11}
+grava em \texttt{x1} o endereço de retorno, \texttt{0x10}.}
+
+\figura{fig10}{JALR (programa 09, 70~ns). \texttt{0x00008067} é \texttt{jalr x0, 0(x1)},
+o retorno da sub-rotina, no PC \texttt{0xe8}. A ULA soma \texttt{x1 + 0}, o bit 0 é zerado e
+a execução volta para \texttt{0x10} (\texttt{PC\_sel = 01}), logo depois do JAL da
+Figura~\ref{fig:fig09}.}
+
+\figura{fig11}{Fim do programa 10 (7246~ns). O PC chega ao laço final em \texttt{0x1a8}
+(\texttt{0x0000006f}, \texttt{j fim}). \texttt{x30 = 5} mostra que os cinco subtestes rodaram
+e \texttt{x31 = 1} indica que todos passaram.}
+
+\section{Conclusão}
+
+O processador RV32I de ciclo único está completo e executa todas as instruções da
+Seção~2. Os 14 testbenches de bloco e os 10 programas passam no Xcelium, e em todos os
+programas o estado final dos registradores e o número de ciclos batem com o simulador de
+referência.
+
+Os testes com programas completos foram os que mais ajudaram. Eles acharam três erros que os
+testes de bloco não pegavam: no AUIPC, nos acessos de byte e meia palavra e no tamanho da
+memória de dados. Cada bloco, sozinho, funcionava; os erros só apareceram com tudo ligado.
+
+Tudo o que usamos está no repositório. O RTL e os testbenches ficam em \texttt{rtl/} e
+\texttt{tb/}, e os programas em \texttt{instructions/programs/}, com os registradores
+esperados em \texttt{.regs}. O código assembly e as ferramentas que geraram os testes estão em
+\texttt{instructions/arquivos\_assembly/}, e os scripts de simulação e de formas de onda,
+em \texttt{sim/}.
+
+\end{document}
